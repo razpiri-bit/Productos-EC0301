@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Resultados - EC0301</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #1E3A8A; --accent: #FF6B35; --success: #22C55E; --danger: #EF4444;
+            --light: #F8FAFC; --border: #E5E7EB; --text: #1F2937; --muted: #6B7280;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #F1F5F9; color: var(--text);
+        }
+        .header {
+            background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky; top: 0; z-index: 1000; border-bottom: 3px solid var(--accent);
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem 1rem; }
+        .header-content {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem; max-width: 1400px; margin: 0 auto;
+        }
+        h1 { font-size: 1.75rem; color: var(--primary); }
+        .btn {
+            padding: 0.6rem 1.2rem; border: none; border-radius: 8px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease; display: inline-flex;
+            align-items: center; gap: 0.5rem; text-decoration: none;
+        }
+        .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-success { background: var(--success); color: white; }
+
+        .results-container {
+            background: white; padding: 2.5rem; border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+        .info-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--light); padding: 1rem; border-radius: 8px; margin-bottom: 2rem;
+        }
+        .info-bar h2 { font-size: 1.5rem; color: var(--primary); }
+        
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { border: 1px solid var(--border); padding: 0.8rem; text-align: left; }
+        th { background: var(--primary); color: white; }
+        tbody tr:nth-child(even) { background-color: var(--light); }
+        .editable-cell {
+            background-color: #FFFBEB;
+            font-weight: 500;
+            outline: none;
+        }
+        .status-aprobado { color: var(--success); font-weight: bold; }
+        .status-no-aprobado { color: var(--danger); font-weight: bold; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1><i class="fa-solid fa-file-excel" style="color: var(--accent);"></i> Módulo de Resultados</h1>
+            <a href="carta-descriptiva.html" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="results-container">
+            <div class="info-bar">
+                <div>
+                    <h2 id="cursoNombre">Cargando nombre del curso...</h2>
+                    <p class="muted">A continuación, ingrese los nombres de los participantes y sus calificaciones.</p>
+                </div>
+                <button class="btn btn-success" onclick="exportToExcel()">
+                    <i class="fa-solid fa-download"></i> Exportar a Excel
+                </button>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nombre del Participante</th>
+                            <th>Cal. Diagnóstica (0-100)</th>
+                            <th>Cal. Formativa (<span id="ponderacionFormativa"></span>%)</th>
+                            <th>Cal. Sumativa (<span id="ponderacionSumativa"></span>%)</th>
+                            <th>Calificación Final</th>
+                            <th>Estatus (Mín. <span id="califMinima"></span>)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const KEY = 'EC0301_CARTA_PRO';
+        let cartaData = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedData = localStorage.getItem(KEY);
+            if (!savedData) {
+                Swal.fire({
+                    icon: 'warning', title: 'Datos no encontrados',
+                    html: 'Es necesario guardar la <strong>Carta Descriptiva</strong> para generar el informe de resultados.',
+                    confirmButtonText: 'Ir a la Carta Descriptiva'
+                }).then(() => { window.location.href = 'carta-descriptiva.html'; });
+                return;
+            }
+            cartaData = JSON.parse(savedData);
+            populatePage();
+        });
+
+        function populatePage() {
+            document.getElementById('cursoNombre').textContent = cartaData.nombre || 'Informe de Resultados';
+            document.getElementById('ponderacionFormativa').textContent = cartaData.ev.form.pct || '40';
+            document.getElementById('ponderacionSumativa').textContent = cartaData.ev.sum.pct.replace('%', '') || '60';
+            document.getElementById('califMinima').textContent = cartaData.ev.min || '80';
+
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+            const numParticipantes = parseInt(cartaData.num) || 10;
+
+            for (let i = 1; i <= numParticipantes; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${i}</td>
+                    <td contenteditable="true" class="editable-cell">Participante ${i}</td>
+                    <td contenteditable="true" class="editable-cell" oninput="recalculateRow(${i-1})">0</td>
+                    <td contenteditable="true" class="editable-cell" oninput="recalculateRow(${i-1})">0</td>
+                    <td contenteditable="true" class="editable-cell" oninput="recalculateRow(${i-1})">0</td>
+                    <td><strong>0</strong></td>
+                    <td>-</td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        function recalculateRow(rowIndex) {
+            const row = document.getElementById('resultsBody').rows[rowIndex];
+            const cells = row.cells;
+
+            const calDiag = parseFloat(cells[2].textContent) || 0;
+            const calForm = parseFloat(cells[3].textContent) || 0;
+            const calSum = parseFloat(cells[4].textContent) || 0;
+
+            const pondForm = parseFloat(cartaData.ev.form.pct) || 40;
+            const pondSum = parseFloat(cartaData.ev.sum.pct.replace('%', '')) || 60;
+            
+            const califFinal = ((calForm * pondForm) / 100) + ((calSum * pondSum) / 100);
+            
+            cells[5].innerHTML = `<strong>${califFinal.toFixed(2)}</strong>`;
+
+            const califMin = parseFloat(cartaData.ev.min) || 80;
+            const statusCell = cells[6];
+            if (califFinal >= califMin) {
+                statusCell.textContent = 'Aprobado';
+                statusCell.className = 'status-aprobado';
+            } else {
+                statusCell.textContent = 'No Aprobado';
+                statusCell.className = 'status-no-aprobado';
+            }
+        }
+
+        function exportToExcel() {
+            const table = document.getElementById('resultsTable');
+            const wb = XLSX.utils.table_to_book(table, { sheet: "Resultados" });
+
+            // Formatear el nombre del archivo
+            const cursoNombre = cartaData.nombre ? cartaData.nombre.replace(/ /g, '_') : 'Informe';
+            const fecha = new Date().toISOString().slice(0, 10);
+            const fileName = `Informe_Final_${cursoNombre}_${fecha}.xlsx`;
+
+            XLSX.writeFile(wb, fileName);
+
+            Swal.fire({
+                icon: 'success',
+                title: '¡Exportado!',
+                text: `El archivo ${fileName} ha sido generado exitosamente.`,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        }
+    </script>
+</body>
+</html>
