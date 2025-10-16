@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Auditoría y Empaquetado - EC0301</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --primary: #1E3A8A; --accent: #FF6B35; --success: #22C55E; --danger: #EF4444;
+            --light: #F8FAFC; --border: #E5E7EB; --text: #1F2937; --muted: #6B7280;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #F1F5F9; color: var(--text);
+        }
+        .header {
+            background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky; top: 0; z-index: 1000; border-bottom: 3px solid var(--accent);
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+        .header-content {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem; max-width: 1200px; margin: 0 auto;
+        }
+        h1 { font-size: 1.75rem; color: var(--primary); }
+        .btn {
+            padding: 0.6rem 1.2rem; border: none; border-radius: 8px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease; display: inline-flex;
+            align-items: center; gap: 0.5rem; text-decoration: none;
+        }
+        .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-success { background: var(--success); color: white; }
+        .btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+        .audit-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        @media (max-width: 900px) { .audit-layout { grid-template-columns: 1fr; } }
+        
+        .card { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+        .card-header { text-align: center; margin-bottom: 2rem; }
+        .card-header h2 { font-size: 1.8rem; color: var(--primary); }
+
+        .score-circle {
+            width: 180px; height: 180px; border-radius: 50%; margin: 0 auto 1.5rem auto;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: conic-gradient(var(--success) 0deg, var(--border) 0deg);
+            transition: background 1s ease-in-out;
+        }
+        .score-percentage { font-size: 3rem; font-weight: 700; color: var(--primary); }
+        .score-label { font-size: 1rem; color: var(--muted); }
+
+        .checklist { list-style: none; padding: 0; }
+        .check-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem; font-weight: 500; }
+        .check-item.pass { background: #F0FDF4; color: #166534; }
+        .check-item.fail { background: #FEF2F2; color: #991B1B; }
+        .check-item i { font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1><i class="fa-solid fa-shield-check" style="color: var(--accent);"></i> Auditoría y Empaquetado</h1>
+            <a href="carta-descriptiva.html" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="audit-layout">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Auditoría de Cumplimiento EC0301</h2>
+                    <p id="cursoNombre" class="muted">Análisis automático del proyecto</p>
+                </div>
+                <div id="scoreCircle" class="score-circle">
+                    <div id="scorePercentage" class="score-percentage">0%</div>
+                    <div class="score-label">Cumplimiento</div>
+                </div>
+                <ul id="checklist" class="checklist"></ul>
+            </div>
+
+            <div class="card">
+                 <div class="card-header">
+                    <h2>Portafolio de Evidencias ZIP</h2>
+                    <p class="muted">Genera un ZIP con todos tus productos en PDF.</p>
+                </div>
+                <div style="text-align: center; padding: 2rem 0;">
+                    <i class="fa-solid fa-file-zipper" style="font-size: 6rem; color: var(--primary);"></i>
+                    <p style="margin-top: 1.5rem;">Esta opción se activará cuando el nivel de cumplimiento de la auditoría sea del 100%.</p>
+                </div>
+                <button id="generateZipBtn" class="btn btn-success" style="width: 100%; padding: 1rem;" onclick="generatePortfolioZIP()" disabled>
+                    <i class="fa-solid fa-download"></i> Generar y Descargar ZIP
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const KEY = 'EC0301_CARTA_PRO';
+        let cartaData = {};
+        const { jsPDF } = window.jspdf;
+
+        const AUDIT_CRITERIA = [
+            { key: 'nombre', label: 'Nombre del curso definido', weight: 5 },
+            { key: 'diseñador', label: 'Diseñador instruccional especificado', weight: 5 },
+            { key: 'psico', label: 'Perfil del participante descrito', weight: 10 },
+            { key: 'og.accion', label: 'Objetivo General con acción observable', weight: 10 },
+            { key: 'og.cond', label: 'Objetivo General con condición de operación', weight: 10 },
+            { key: 'og.criterio', label: 'Objetivo General con criterio de evaluación', weight: 10 },
+            { key: 'objetivos.0.accion', label: 'Al menos un Objetivo Particular definido', weight: 10 },
+            { key: 'temas.0.nombre', label: 'Al menos un Tema de desarrollo creado', weight: 10 },
+            { key: 'rq.inst', label: 'Requerimientos de instalaciones detallados', weight: 5 },
+            { key: 'rq.equipo', label: 'Requerimientos de equipo detallados', weight: 5 },
+            { key: 'rq.mats', label: 'Requerimientos de materiales detallados', weight: 5 },
+            { key: 'ev.min', label: 'Sistema de evaluación configurado', weight: 5 },
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedData = localStorage.getItem(KEY);
+            if (!savedData) { /* ... código de error ... */ return; }
+            cartaData = JSON.parse(savedData);
+            document.getElementById('cursoNombre').textContent = `Análisis del curso: "${cartaData.nombre || 'Sin Nombre'}"`;
+            runAudit();
+        });
+
+        const getNestedValue = (obj, path) => path.split('.').reduce((acc, part) => acc && acc[part], obj);
+
+        function runAudit() {
+            let totalScore = 0;
+            const checklistEl = document.getElementById('checklist');
+            checklistEl.innerHTML = '';
+            
+            const totalWeight = AUDIT_CRITERIA.reduce((sum, item) => sum + item.weight, 0);
+
+            AUDIT_CRITERIA.forEach(criterion => {
+                const value = getNestedValue(cartaData, criterion.key);
+                const pass = value && (Array.isArray(value) ? value.length > 0 : String(value).trim() !== '');
+                
+                const item = document.createElement('li');
+                item.className = `check-item ${pass ? 'pass' : 'fail'}`;
+                item.innerHTML = `<i class="fa-solid ${pass ? 'fa-check-circle' : 'fa-times-circle'}"></i> ${criterion.label}`;
+                checklistEl.appendChild(item);
+
+                if (pass) { totalScore += criterion.weight; }
+            });
+
+            const finalPercentage = Math.round((totalScore / totalWeight) * 100);
+            document.getElementById('scorePercentage').textContent = `${finalPercentage}%`;
+            document.getElementById('scoreCircle').style.background = `conic-gradient(var(--success) ${finalPercentage * 3.6}deg, var(--border) 0deg)`;
+
+            if (finalPercentage === 100) {
+                document.getElementById('generateZipBtn').disabled = false;
+            }
+        }
+
+        // --- FUNCIONES DE GENERACIÓN DE PDFs INDIVIDUALES ---
+
+        function createCartaDescriptivaPDF() {
+            const doc = new jsPDF();
+            doc.setFontSize(18);
+            doc.text('Carta Descriptiva (Resumen)', 20, 20);
+            doc.setFontSize(12);
+            doc.text(`Curso: ${cartaData.nombre}`, 20, 30);
+            doc.text(`Objetivo: ${cartaData.og.accion}`, 20, 40, { maxWidth: 170 });
+            // ... agregar más detalles
+            return doc.output('blob');
+        }
+
+        function createAsistenciaPDF() {
+            const doc = new jsPDF();
+            doc.setFontSize(18); doc.text('Lista de Asistencia', 105, 20, { align: 'center' });
+            doc.autoTable({
+                startY: 30,
+                head: [['No.', 'Nombre Completo', 'Firma']],
+                body: Array.from({ length: parseInt(cartaData.num) || 10 }, (_, i) => [i + 1, '', '']),
+            });
+            return doc.output('blob');
+        }
+
+        function createRequerimientosPDF() {
+            const doc = new jsPDF();
+            doc.setFontSize(18); doc.text('Lista de Requerimientos', 20, 20);
+            let yPos = 30;
+            Object.entries(cartaData.rq).forEach(([key, value]) => {
+                if(value) {
+                    doc.setFontSize(12); doc.text(key.toUpperCase(), 20, yPos); yPos += 7;
+                    doc.setFontSize(10); doc.text(value, 20, yPos, { maxWidth: 170 }); yPos += 15;
+                }
+            });
+            return doc.output('blob');
+        }
+        
+        function createContratoPDF() {
+            const doc = new jsPDF();
+            doc.setFontSize(18); doc.text('Contrato de Aprendizaje', 20, 20);
+            doc.setFontSize(12); doc.text('Compromisos del Facilitador...', 20, 30);
+            // ... agregar texto del contrato
+            return doc.output('blob');
+        }
+        
+        function createEvaluacionesPDF() {
+            const doc = new jsPDF();
+            doc.setFontSize(18); doc.text('Resumen de Instrumentos de Evaluación', 20, 20);
+            doc.autoTable({
+                startY: 30,
+                head: [['Instrumento', 'Propósito']],
+                body: [
+                    ['Diagnóstica', 'Mide conocimientos previos.'],
+                    ['Formativa', 'Observa el desempeño durante el curso.'],
+                    ['Sumativa', 'Mide el logro de los objetivos al final.'],
+                    ['Satisfacción', 'Recopila la percepción del participante.']
+                ]
+            });
+            return doc.output('blob');
+        }
+
+
+        async function generatePortfolioZIP() {
+            Swal.fire({
+                title: 'Generando Portafolio ZIP...',
+                text: 'Creando y empaquetando todos los documentos. Por favor, espera.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            try {
+                const zip = new JSZip();
+
+                // Generar cada PDF y añadirlo al ZIP
+                zip.file("01_Carta_Descriptiva.pdf", createCartaDescriptivaPDF());
+                zip.file("02_Lista_Asistencia.pdf", createAsistenciaPDF());
+                zip.file("03_Lista_Requerimientos.pdf", createRequerimientosPDF());
+                zip.file("04_Contrato_Aprendizaje.pdf", createContratoPDF());
+                zip.file("05_Instrumentos_Evaluacion.pdf", createEvaluacionesPDF());
+
+                // Generar el archivo ZIP
+                const content = await zip.generateAsync({ type: "blob" });
+
+                // Descargar el ZIP
+                const cursoNombre = cartaData.nombre ? cartaData.nombre.replace(/ /g, '_') : 'Portafolio';
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(content);
+                link.download = `Portafolio_EC0301_${cursoNombre}.zip`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+
+                Swal.fire('¡Éxito!', 'Tu portafolio de evidencias en formato ZIP ha sido generado.', 'success');
+
+            } catch (error) {
+                console.error("Error al generar el ZIP:", error);
+                Swal.fire('Error', 'Ocurrió un problema al generar el archivo ZIP.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
