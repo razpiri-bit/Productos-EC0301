@@ -1,329 +1,856 @@
-!DOCTYPE html
-html lang=es
-head
-    meta charset=UTF-8
-    meta name=viewport content=width=device-width, initial-scale=1.0
-    titleSkillsCert - Generador de Documentos EC0301title
-    link rel=stylesheet href=httpscdnjs.cloudflare.comajaxlibsfont-awesome6.5.1cssall.min.css
-    script src=httpscdn.jsdelivr.netnpmsweetalert2@11script
-    style
-        root {
-            --primary #1E3A8A;
-            --accent #FF6B35;
-            --success #22C55E;
-            --light #F8FAFC;
-            --border #E5E7EB;
-            --text #1F2937;
-            --muted #6B7280;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Plataforma para generar documentos EC0301 de forma profesional. Obtén tu Carta Descriptiva y todos los formatos certificados en minutos.">
+    <meta name="keywords" content="EC0301, certificación, CONOCER, carta descriptiva, evaluación, competencias laborales">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https:;">
+    
+    <title>SkillsCert - Generador de Documentos EC0301 Certificados</title>
+    
+    <!-- Preload recursos críticos -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" as="style">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/sweetalert2@11" as="script">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    
+    <style>
+        :root {
+            --primary: #1E3A8A;
+            --accent: #FF6B35;
+            --success: #22C55E;
+            --error: #EF4444;
+            --warning: #F59E0B;
+            --light: #F8FAFC;
+            --border: #E5E7EB;
+            --text: #1F2937;
+            --muted: #6B7280;
         }
-         { margin 0; padding 0; box-sizing border-box; }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background #F1F5F9;
-            color var(--text);
-            line-height 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #F1F5F9;
+            color: var(--text);
+            line-height: 1.6;
         }
+        
+        /* Estilos críticos inline para performance */
         .container {
-            max-width 1200px;
-            margin 0 auto;
-            padding 2rem 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
         }
+        
         .header {
-            background white;
-            padding 1rem 0;
-            box-shadow 0 2px 10px rgba(0,0,0,0.05);
-            border-bottom 3px solid var(--primary);
+            background: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-bottom: 3px solid var(--primary);
         }
+        
         .header-content {
-            display flex;
-            justify-content space-between;
-            align-items center;
-            max-width 1200px;
-            margin 0 auto;
-            padding 0 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
         }
+        
         .logo {
-            font-size 1.75rem;
-            font-weight 700;
-            color var(--primary);
-            display flex;
-            align-items center;
-            gap 0.5rem;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
+        
         .main-content {
-            display grid;
-            grid-template-columns 1fr 1fr;
-            gap 3rem;
-            align-items center;
-            margin-top 3rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+            margin-top: 3rem;
         }
-        @media (max-width 900px) {
-            .main-content { grid-template-columns 1fr; }
+        
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
         }
+        
         .hero-text h1 {
-            font-size 2.8rem;
-            color var(--primary);
-            margin-bottom 1rem;
+            font-size: 2.8rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
         }
+        
         .hero-text p {
-            font-size 1.1rem;
-            color var(--muted);
-            margin-bottom 1.5rem;
+            font-size: 1.1rem;
+            color: var(--muted);
+            margin-bottom: 1.5rem;
         }
-        .features-list { list-style none; margin-bottom 2rem; }
+        
+        .features-list {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+        
         .features-list li {
-            display flex;
-            align-items center;
-            gap 0.75rem;
-            margin-bottom 0.75rem;
-            font-weight 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            font-weight: 500;
         }
-        .features-list i { color var(--success); }
+        
+        .features-list i {
+            color: var(--success);
+        }
+        
         .registration-card {
-            background white;
-            padding 2.5rem;
-            border-radius 16px;
-            box-shadow 0 10px 30px rgba(0,0,0,0.1);
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
+        
         .registration-card h2 {
-            font-size 1.8rem;
-            color var(--primary);
-            text-align center;
-            margin-bottom 2rem;
+            font-size: 1.8rem;
+            color: var(--primary);
+            text-align: center;
+            margin-bottom: 2rem;
         }
-        .input-group { margin-bottom 1.25rem; }
+        
+        .input-group {
+            margin-bottom: 1.25rem;
+            position: relative;
+        }
+        
         .input-group label {
-            display block;
-            font-weight 600;
-            margin-bottom 0.5rem;
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
         }
+        
+        .input-group label .required {
+            color: var(--error);
+        }
+        
         .input-group input {
-            width 100%;
-            padding 0.875rem;
-            border 2px solid var(--border);
-            border-radius 10px;
-            font-size 1rem;
-            transition all 0.3s ease;
+            width: 100%;
+            padding: 0.875rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
         }
-        .input-group inputfocus {
-            outline none;
-            border-color var(--accent);
-            box-shadow 0 0 0 3px rgba(255, 107, 53, 0.1);
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
         }
+        
+        /* Estados de validación */
+        .input-group.valid input {
+            border-color: var(--success);
+        }
+        
+        .input-group.invalid input {
+            border-color: var(--error);
+        }
+        
+        .error-message {
+            color: var(--error);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .success-icon {
+            position: absolute;
+            right: 1rem;
+            top: 2.5rem;
+            color: var(--success);
+            display: none;
+        }
+        
+        .input-group.valid .success-icon {
+            display: block;
+        }
+        
         .privacy-group {
-            display flex;
-            align-items center;
-            gap 0.5rem;
-            font-size 0.9rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
         }
+        
         .btn {
-            padding 0.8rem 1.2rem;
-            border none;
-            border-radius 8px;
-            font-weight 600;
-            font-size 1rem;
-            cursor pointer;
-            transition all 0.3s ease;
-            display inline-flex;
-            align-items center;
-            gap 0.5rem;
-            text-decoration none;
-            width 100%;
-            justify-content center;
+            padding: 0.8rem 1.2rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            width: 100%;
+            justify-content: center;
+            position: relative;
         }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
         .btn-primary {
-            background var(--primary);
-            color white;
+            background: var(--primary);
+            color: white;
         }
-        .btn-primaryhover { background #1a306e; }
-        .payment-options { margin-top 1.5rem; }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #1a306e;
+        }
+        
+        .loading-spinner {
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .btn.loading .loading-spinner {
+            display: block;
+        }
+        
+        .payment-options {
+            margin-top: 1.5rem;
+        }
+        
         .payment-options h3 {
-            text-align center;
-            font-size 1rem;
-            color var(--muted);
-            margin-bottom 1rem;
+            text-align: center;
+            font-size: 1rem;
+            color: var(--muted);
+            margin-bottom: 1rem;
         }
+        
         .payment-grid {
-            display grid;
-            grid-template-columns repeat(3, 1fr);
-            gap 0.75rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem;
         }
+        
         .payment-btn {
-            background var(--light);
-            border 2px solid var(--border);
-            padding 0.75rem;
-            border-radius 8px;
-            cursor pointer;
-            transition all 0.3s ease;
-            text-align center;
+            background: var(--light);
+            border: 2px solid var(--border);
+            padding: 1rem 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .payment-btnhover {
-            border-color var(--accent);
-            transform translateY(-2px);
+        
+        .payment-btn:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
         }
+        
+        .payment-btn:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        
+        .payment-btn i {
+            font-size: 1.5rem;
+        }
+        
         .footer {
-            background var(--primary);
-            color white;
-            text-align center;
-            padding 2rem 1rem;
-            margin-top 4rem;
+            background: var(--primary);
+            color: white;
+            text-align: center;
+            padding: 2rem 1rem;
+            margin-top: 4rem;
         }
-        .footer p { margin 0.25rem 0; opacity 0.9; }
-        .footer a { color white; text-decoration none; }
-    style
-head
-body
-
-    header class=header
-        div class=header-content
-            div class=logoi class=fa-solid fa-drafting-compassi SkillsCertdiv
-            nav
-                nav
-        div
-    header
-
-    main class=container
-        div class=main-content
-            div class=hero-text
-                h1Genera tus Documentos span style=color var(--accent);EC0301span en Minutosh1
-                pNuestra plataforma inteligente te guía paso a paso para crear una Carta Descriptiva y todos los formatos requeridos por el Estándar de Competencia, de forma profesional y sin errores.p
-                ul class=features-list
-                    lii class=fa-solid fa-check-circlei Asistente IA para la redacción de objetivos.li
-                    lii class=fa-solid fa-file-pdfi Generación automática de todos los formatos.li
-                    lii class=fa-solid fa-cloud-arrow-downi Exportación a PDF y Word.li
-                    lii class=fa-solid fa-shield-halvedi 100% alineado al estándar CONOCER.li
-                ul
-                pstrongObtén 3 meses de acceso ilimitado a todas las herramientas.strongp
-            div
-
-            div class=registration-card
-                h2Crea tu Cuentah2
-                form id=registrationForm onsubmit=return false;
-                    div class=input-group
-                        label for=nombreNombre Completolabel
-                        input type=text id=nombre name=nombre placeholder=Tu nombre completo required
-                    div
-                    div class=input-group
-                        label for=emailCorreo Electrónicolabel
-                        input type=email id=email name=email placeholder=donde recibirás tu acceso required
-                    div
-                    div class=input-group
-                        label for=whatsappWhatsApplabel
-                        input type=tel id=whatsapp name=whatsapp placeholder=10 dígitos required
-                    div
-                    div class=input-group
-                        label for=empresaEmpresa (Opcional)label
-                        input type=text id=empresa name=empresa placeholder=Nombre de tu empresa
-                    div
-                    div class=privacy-group
-                        input type=checkbox id=privacy name=privacy required
-                        label for=privacyAcepto el a href=httpswww.skillscert.com.mxaviso-de-privacidad target=_blankAviso de Privacidada.label
-                    div
-
-                    div class=payment-options
-                        h3Selecciona tu método de pagoh3
-                        div class=payment-grid
-                            button type=button class=payment-btn onclick=handlePayment('tarjeta')
-                                i class=fa-solid fa-credit-cardibrTarjeta
-                            button
-                            button type=button class=payment-btn onclick=handlePayment('spei')
-                                i class=fa-solid fa-universityibrSPEI
-                            button
-                            button type=button class=payment-btn onclick=handlePayment('oxxo')
-                                i class=fa-solid fa-storeibrOXXO
-                            button
-                        div
-                    div
-                form
-            div
-        div
-    main
-
-    footer class=footer
-        pstrongSkillsCert &copy; 2025strongp
-        pi class=fa-solid fa-envelopei a href=mailtoinfo@skillscert.cominfo@skillscert.comap
-        pi class=fa-solid fa-phonei Cel 55 3882 2334p
-        pi class=fa-solid fa-map-marker-alti Estado de México, México  Oaxaca, Oax. Méxicop
-    footer
-
-    script
-        function validateForm() {
-            const form = document.getElementById('registrationForm');
-            const requiredFields = form.querySelectorAll('[required]');
-            for (const field of requiredFields) {
-                if (!field.value.trim()  (field.type === 'checkbox' && !field.checked)) {
-                    Swal.fire({
-                        icon 'error',
-                        title 'Oops...',
-                        text `Por favor, completa el campo ${field.labels[0].innerText} y acepta el aviso de privacidad.`,
+        
+        .footer p {
+            margin: 0.25rem 0;
+            opacity: 0.9;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Mejoras de accesibilidad */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        /* Focus visible mejorado */
+        button:focus-visible,
+        input:focus-visible,
+        a:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link para accesibilidad -->
+    <a href="#main-content" class="sr-only">Saltar al contenido principal</a>
+    
+    <header class="header" role="banner">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fa-solid fa-drafting-compass" aria-hidden="true"></i>
+                SkillsCert
+            </div>
+            <nav role="navigation" aria-label="Navegación principal">
+                <!-- Navegación futura -->
+            </nav>
+        </div>
+    </header>
+    
+    <main class="container" id="main-content" role="main">
+        <div class="main-content">
+            <div class="hero-text">
+                <h1>Genera tus Documentos <span style="color: var(--accent);">EC0301</span> en Minutos</h1>
+                <p>Nuestra plataforma inteligente te guía paso a paso para crear una Carta Descriptiva y todos los formatos requeridos por el Estándar de Competencia, de forma profesional y sin errores.</p>
+                
+                <ul class="features-list" role="list">
+                    <li><i class="fa-solid fa-check-circle" aria-hidden="true"></i> Asistente IA para la redacción de objetivos.</li>
+                    <li><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Generación automática de todos los formatos.</li>
+                    <li><i class="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i> Exportación a PDF y Word.</li>
+                    <li><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> 100% alineado al estándar CONOCER.</li>
+                </ul>
+                
+                <p><strong>Obtén 3 meses de acceso ilimitado a todas las herramientas.</strong></p>
+            </div>
+            
+            <div class="registration-card">
+                <h2>Crea tu Cuenta</h2>
+                
+                <form id="registrationForm" novalidate>
+                    <div class="input-group">
+                        <label for="nombre">
+                            Nombre Completo <span class="required" aria-label="obligatorio">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="nombre" 
+                            name="nombre" 
+                            placeholder="Tu nombre completo" 
+                            required
+                            aria-describedby="nombre-error"
+                            autocomplete="name"
+                        >
+                        <i class="fa-solid fa-check success-icon" aria-hidden="true"></i>
+                        <div id="nombre-error" class="error-message" role="alert" aria-live="polite"></div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="email">
+                            Correo Electrónico <span class="required" aria-label="obligatorio">*</span>
+                        </label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            placeholder="donde recibirás tu acceso" 
+                            required
+                            aria-describedby="email-error"
+                            autocomplete="email"
+                        >
+                        <i class="fa-solid fa-check success-icon" aria-hidden="true"></i>
+                        <div id="email-error" class="error-message" role="alert" aria-live="polite"></div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="whatsapp">
+                            WhatsApp <span class="required" aria-label="obligatorio">*</span>
+                        </label>
+                        <input 
+                            type="tel" 
+                            id="whatsapp" 
+                            name="whatsapp" 
+                            placeholder="10 dígitos (ej: 5512345678)" 
+                            required
+                            pattern="[0-9]{10}"
+                            aria-describedby="whatsapp-error"
+                            autocomplete="tel"
+                        >
+                        <i class="fa-solid fa-check success-icon" aria-hidden="true"></i>
+                        <div id="whatsapp-error" class="error-message" role="alert" aria-live="polite"></div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="empresa">Empresa (Opcional)</label>
+                        <input 
+                            type="text" 
+                            id="empresa" 
+                            name="empresa" 
+                            placeholder="Nombre de tu empresa"
+                            autocomplete="organization"
+                        >
+                    </div>
+                    
+                    <div class="privacy-group">
+                        <input 
+                            type="checkbox" 
+                            id="privacy" 
+                            name="privacy" 
+                            required
+                            aria-describedby="privacy-error"
+                        >
+                        <label for="privacy">
+                            Acepto el <a href="https://www.skillscert.com.mx/aviso-de-privacidad" target="_blank" rel="noopener">
+                                Aviso de Privacidad
+                                <span class="sr-only">(se abre en nueva ventana)</span>
+                            </a>.
+                        </label>
+                        <div id="privacy-error" class="error-message" role="alert" aria-live="polite"></div>
+                    </div>
+                    
+                    <div class="payment-options">
+                        <h3>Selecciona tu método de pago</h3>
+                        <div class="payment-grid" role="group" aria-label="Métodos de pago disponibles">
+                            <button 
+                                type="button" 
+                                class="payment-btn" 
+                                data-method="tarjeta"
+                                aria-label="Pago con tarjeta de crédito o débito"
+                            >
+                                <i class="fa-solid fa-credit-card" aria-hidden="true"></i>
+                                Tarjeta
+                            </button>
+                            <button 
+                                type="button" 
+                                class="payment-btn" 
+                                data-method="spei"
+                                aria-label="Pago mediante transferencia SPEI"
+                            >
+                                <i class="fa-solid fa-university" aria-hidden="true"></i>
+                                SPEI
+                            </button>
+                            <button 
+                                type="button" 
+                                class="payment-btn" 
+                                data-method="oxxo"
+                                aria-label="Pago en tiendas OXXO"
+                            >
+                                <i class="fa-solid fa-store" aria-hidden="true"></i>
+                                OXXO
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+    
+    <footer class="footer" role="contentinfo">
+        <p><strong>SkillsCert © 2025</strong></p>
+        <p>
+            <i class="fa-solid fa-envelope" aria-hidden="true"></i> 
+            <a href="mailto:info@skillscert.com">info@skillscert.com</a>
+        </p>
+        <p>
+            <i class="fa-solid fa-phone" aria-hidden="true"></i> 
+            Cel: <a href="tel:+525538822334">55 3882 2334</a>
+        </p>
+        <p>
+            <i class="fa-solid fa-map-marker-alt" aria-hidden="true"></i> 
+            Estado de México, México • Oaxaca, Oax. México
+        </p>
+    </footer>
+    
+    <script>
+        // Utilidades de validación
+        const ValidationUtils = {
+            patterns: {
+                email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                whatsapp: /^[0-9]{10}$/,
+                name: /^[a-zA-ZÀ-ÿñÑ\s]{2,50}$/
+            },
+            
+            messages: {
+                required: 'Este campo es obligatorio',
+                email: 'Ingresa un email válido (ejemplo: usuario@dominio.com)',
+                whatsapp: 'Ingresa un número WhatsApp válido de 10 dígitos',
+                name: 'Ingresa un nombre válido (solo letras y espacios, 2-50 caracteres)',
+                privacy: 'Debes aceptar el Aviso de Privacidad para continuar'
+            },
+            
+            sanitize: (input) => {
+                return input.trim().replace(/[<>\"'&]/g, '');
+            },
+            
+            validateField: (field, value) => {
+                const sanitizedValue = ValidationUtils.sanitize(value);
+                
+                if (field.hasAttribute('required') && !sanitizedValue) {
+                    return { isValid: false, message: ValidationUtils.messages.required };
+                }
+                
+                if (sanitizedValue && field.type === 'email' && !ValidationUtils.patterns.email.test(sanitizedValue)) {
+                    return { isValid: false, message: ValidationUtils.messages.email };
+                }
+                
+                if (sanitizedValue && field.id === 'whatsapp' && !ValidationUtils.patterns.whatsapp.test(sanitizedValue)) {
+                    return { isValid: false, message: ValidationUtils.messages.whatsapp };
+                }
+                
+                if (sanitizedValue && field.id === 'nombre' && !ValidationUtils.patterns.name.test(sanitizedValue)) {
+                    return { isValid: false, message: ValidationUtils.messages.name };
+                }
+                
+                if (field.type === 'checkbox' && field.hasAttribute('required') && !field.checked) {
+                    return { isValid: false, message: ValidationUtils.messages.privacy };
+                }
+                
+                return { isValid: true, message: '' };
+            }
+        };
+        
+        // Gestión de UI
+        const UIManager = {
+            showFieldError: (field, message) => {
+                const inputGroup = field.closest('.input-group');
+                const errorElement = field.nextElementSibling?.nextElementSibling || 
+                                   document.getElementById(field.getAttribute('aria-describedby'));
+                
+                if (inputGroup) {
+                    inputGroup.classList.remove('valid');
+                    inputGroup.classList.add('invalid');
+                }
+                
+                if (errorElement) {
+                    errorElement.textContent = message;
+                    errorElement.classList.add('show');
+                }
+            },
+            
+            showFieldSuccess: (field) => {
+                const inputGroup = field.closest('.input-group');
+                const errorElement = field.nextElementSibling?.nextElementSibling || 
+                                   document.getElementById(field.getAttribute('aria-describedby'));
+                
+                if (inputGroup) {
+                    inputGroup.classList.remove('invalid');
+                    inputGroup.classList.add('valid');
+                }
+                
+                if (errorElement) {
+                    errorElement.textContent = '';
+                    errorElement.classList.remove('show');
+                }
+            },
+            
+            clearFieldState: (field) => {
+                const inputGroup = field.closest('.input-group');
+                const errorElement = field.nextElementSibling?.nextElementSibling || 
+                                   document.getElementById(field.getAttribute('aria-describedby'));
+                
+                if (inputGroup) {
+                    inputGroup.classList.remove('valid', 'invalid');
+                }
+                
+                if (errorElement) {
+                    errorElement.textContent = '';
+                    errorElement.classList.remove('show');
+                }
+            },
+            
+            showLoading: (button, text = 'Procesando...') => {
+                const originalText = button.innerHTML;
+                button.innerHTML = `<span class="loading-spinner"></span> ${text}`;
+                button.classList.add('loading');
+                button.disabled = true;
+                button.dataset.originalText = originalText;
+            },
+            
+            hideLoading: (button) => {
+                if (button.dataset.originalText) {
+                    button.innerHTML = button.dataset.originalText;
+                    delete button.dataset.originalText;
+                }
+                button.classList.remove('loading');
+                button.disabled = false;
+            }
+        };
+        
+        // Validador de formulario principal
+        class FormValidator {
+            constructor(formId) {
+                this.form = document.getElementById(formId);
+                this.fields = this.form.querySelectorAll('input[required], input[type="email"], input[pattern]');
+                this.init();
+            }
+            
+            init() {
+                // Validación en tiempo real
+                this.fields.forEach(field => {
+                    field.addEventListener('blur', () => this.validateField(field));
+                    field.addEventListener('input', () => {
+                        if (field.classList.contains('invalid') || field.value) {
+                            this.validateField(field);
+                        }
                     });
-                    field.focus();
-                    return false;
+                });
+                
+                // Validación de checkbox de privacidad
+                const privacyCheckbox = document.getElementById('privacy');
+                if (privacyCheckbox) {
+                    privacyCheckbox.addEventListener('change', () => this.validateField(privacyCheckbox));
                 }
             }
-            return true;
-        }
-
-        function handlePayment(method) {
-            if (!validateForm()) {
-                return;
+            
+            validateField(field) {
+                const validation = ValidationUtils.validateField(field, field.value);
+                
+                if (validation.isValid) {
+                    UIManager.showFieldSuccess(field);
+                } else {
+                    UIManager.showFieldError(field, validation.message);
+                }
+                
+                return validation.isValid;
             }
-
-            const userData = {
-                nombre document.getElementById('nombre').value,
-                email document.getElementById('email').value
-            };
-
-            switch (method) {
-                case 'tarjeta'
-                    Swal.fire({
-                        icon 'info',
-                        title 'Pago con Tarjeta',
-                        html `
-                            p¡Gracias, ${userData.nombre}!p
-                            pLa integración con PayPal y Stripe está casi lista.p
-                            pPor el momento, por favor utiliza SPEI o depósito en OXXO.p
-                            pDisculpa las molestias.p
-                        `,
-                        confirmButtonText 'Entendido'
-                    });
-                    break;
-                case 'spei'
-                    Swal.fire({
-                        icon 'success',
-                        title 'Instrucciones para Transferencia SPEI',
-                        html `
-                            p¡Excelente elección, ${userData.nombre}!p
-                            pRealiza la transferencia a la siguiente cuentap
-                            div style=background#F1F5F9; padding1rem; border-radius8px; margin1rem 0; text-alignleft;
-                                strongBancostrong STP (Sistema de Transferencias y Pagos)br
-                                strongCLABEstrong 646180123456789012br
-                                strongBeneficiariostrong SkillsCert S.A. de C.V.br
-                                strongConceptostrong Pago EC0301 ${userData.nombre}br
-                                strongMontostrong $XXX.XX MXN
-                            div
-                            pUna vez realizado el pago, envía tu comprobante a strongpagos@skillscert.comstrong. Recibirás tu código de acceso en tu correo (${userData.email}) en menos de 24 horas.p
-                        `,
-                        confirmButtonText '¡Listo!'
-                    });
-                    break;
-                case 'oxxo'
-                    Swal.fire({
-                        icon 'success',
-                        title 'Instrucciones para Pago en OXXO',
-                        html `
-                            p¡Claro, ${userData.nombre}!p
-                            pPuedes realizar tu pago en cualquier tienda OXXO al siguiente número de cuentap
-                             div style=background#F1F5F9; padding1rem; border-radius8px; margin1rem 0;
-                                strongNúmero de Tarjetastrong 4766 8400 1234 5678
-                            div
-                            pUna vez realizado el pago, envía una foto de tu ticket a strongpagos@skillscert.comstrong o por WhatsApp al strong55 3882 2334strong. Recibirás tu código de acceso en tu correo (${userData.email}) en menos de 24 horas.p
-                        `,
-                        confirmButtonText 'Entendido'
-                    });
-                    break;
+            
+            validateForm() {
+                let isFormValid = true;
+                const allFields = [...this.fields, document.getElementById('privacy')];
+                
+                allFields.forEach(field => {
+                    if (!this.validateField(field)) {
+                        isFormValid = false;
+                    }
+                });
+                
+                return isFormValid;
+            }
+            
+            getUserData() {
+                return {
+                    nombre: ValidationUtils.sanitize(document.getElementById('nombre').value),
+                    email: ValidationUtils.sanitize(document.getElementById('email').value),
+                    whatsapp: ValidationUtils.sanitize(document.getElementById('whatsapp').value),
+                    empresa: ValidationUtils.sanitize(document.getElementById('empresa').value || ''),
+                    privacyAccepted: document.getElementById('privacy').checked
+                };
             }
         }
-    script
-body
-html
+        
+        // Gestor de pagos mejorado
+        class PaymentManager {
+            constructor(validator) {
+                this.validator = validator;
+                this.init();
+            }
+            
+            init() {
+                const paymentButtons = document.querySelectorAll('.payment-btn');
+                paymentButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => this.handlePayment(e.target.dataset.method));
+                });
+            }
+            
+            async handlePayment(method) {
+                if (!this.validator.validateForm()) {
+                    this.showValidationAlert();
+                    return;
+                }
+                
+                const userData = this.validator.getUserData();
+                
+                switch (method) {
+                    case 'tarjeta':
+                        this.handleCardPayment(userData);
+                        break;
+                    case 'spei':
+                        this.handleSpeiPayment(userData);
+                        break;
+                    case 'oxxo':
+                        this.handleOxxoPayment(userData);
+                        break;
+                    default:
+                        console.error('Método de pago no reconocido:', method);
+                }
+            }
+            
+            showValidationAlert() {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Formulario Incompleto',
+                    text: 'Por favor, completa todos los campos requeridos antes de continuar.',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#1E3A8A'
+                });
+            }
+            
+            handleCardPayment(userData) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Pago con Tarjeta',
+                    html: `
+                        <p>¡Gracias, <strong>${userData.nombre}</strong>!</p>
+                        <p>La integración con procesadores de pago seguros está en desarrollo.</p>
+                        <p>Por el momento, por favor utiliza <strong>SPEI</strong> o <strong>OXXO</strong>.</p>
+                        <p>Disculpa las molestias.</p>
+                    `,
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#1E3A8A'
+                });
+            }
+            
+            handleSpeiPayment(userData) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Instrucciones para Transferencia SPEI',
+                    html: `
+                        <div style="text-align: left;">
+                            <p>¡Excelente elección, <strong>${userData.nombre}</strong>!</p>
+                            <p style="margin: 1rem 0;">Realiza la transferencia con los siguientes datos:</p>
+                            
+                            <div style="background: #F1F5F9; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                                <p><strong>Banco:</strong> Por definir según procesador final</p>
+                                <p><strong>Concepto:</strong> Pago EC0301 ${userData.nombre}</p>
+                                <p><strong>Monto:</strong> $997.00 MXN</p>
+                                <p style="color: #EF4444; font-size: 0.9rem; margin-top: 0.5rem;">
+                                    <i class="fa-solid fa-info-circle"></i> Los datos bancarios reales se proporcionarán por email seguro
+                                </p>
+                            </div>
+                            
+                            <p>Una vez realizado el pago:</p>
+                            <ol>
+                                <li>Envía tu comprobante a <strong>pagos@skillscert.com</strong></li>
+                                <li>Recibirás confirmación en <strong>${userData.email}</strong></li>
+                                <li>Tu código de acceso llegará en menos de 24 horas</li>
+                            </ol>
+                        </div>
+                    `,
+                    confirmButtonText: '¡Listo!',
+                    confirmButtonColor: '#22C55E',
+                    width: '600px'
+                });
+            }
+            
+            handleOxxoPayment(userData) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Instrucciones para Pago en OXXO',
+                    html: `
+                        <div style="text-align: left;">
+                            <p>¡Perfecto, <strong>${userData.nombre}</strong>!</p>
+                            <p style="margin: 1rem 0;">Puedes realizar tu pago en cualquier tienda OXXO:</p>
+                            
+                            <div style="background: #F1F5F9; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                                <p><strong>Monto:</strong> $997.00 MXN</p>
+                                <p><strong>Referencia:</strong> Se enviará por email</p>
+                                <p style="color: #EF4444; font-size: 0.9rem; margin-top: 0.5rem;">
+                                    <i class="fa-solid fa-info-circle"></i> La referencia de pago se enviará a tu email en los próximos minutos
+                                </p>
+                            </div>
+                            
+                            <p>Proceso de pago:</p>
+                            <ol>
+                                <li>Ve a cualquier tienda OXXO</li>
+                                <li>Presenta la referencia de pago</li>
+                                <li>Realiza el pago de $997.00 MXN</li>
+                                <li>Envía foto del ticket a <strong>pagos@skillscert.com</strong></li>
+                                <li>O envía por WhatsApp al <strong>55 3882 2334</strong></li>
+                            </ol>
+                            
+                            <p>Recibirás tu código de acceso en <strong>${userData.email}</strong> en menos de 24 horas.</p>
+                        </div>
+                    `,
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#FF6B35',
+                    width: '600px'
+                });
+            }
+        }
+        
+        // Inicialización de la aplicación
+        document.addEventListener('DOMContentLoaded', function() {
+            const validator = new FormValidator('registrationForm');
+            const paymentManager = new PaymentManager(validator);
+            
+            // Analytics y tracking (opcional)
+            console.log('SkillsCert Registration Form loaded successfully');
+            
+            // Mejora de accesibilidad: anunciar cambios de estado
+            const liveRegion = document.createElement('div');
+            liveRegion.setAttribute('aria-live', 'polite');
+            liveRegion.setAttribute('aria-atomic', 'true');
+            liveRegion.className = 'sr-only';
+            liveRegion.id = 'live-region';
+            document.body.appendChild(liveRegion);
+            
+            // Precargar SweetAlert2 para mejor performance
+            if (typeof Swal !== 'undefined') {
+                Swal.mixin({
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                });
+            }
+        });
+        
+        // Service Worker para cache offline (opcional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                // navigator.serviceWorker.register('/sw.js')
+                //     .then(registration => console.log('SW registered'))
+                //     .catch(error => console.log('SW registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>
