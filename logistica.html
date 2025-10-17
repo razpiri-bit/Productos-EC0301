@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Logística - EC0301</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --primary: #1E3A8A; --accent: #FF6B35; --success: #22C55E;
+            --light: #F8FAFC; --border: #E5E7EB; --text: #1F2937; --muted: #6B7280;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #F1F5F9; color: var(--text);
+        }
+        .header {
+            background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky; top: 0; z-index: 100; border-bottom: 3px solid var(--accent);
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+        .header-content {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem; max-width: 1200px; margin: 0 auto;
+        }
+        h1 { font-size: 1.75rem; color: var(--primary); display: flex; align-items: center; gap: 0.75rem; }
+        .btn {
+            padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease; display: inline-flex;
+            align-items: center; gap: 0.5rem; text-decoration: none;
+        }
+        .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-primary { background: var(--primary); color: white; }
+
+        .tabs {
+            display: flex; border-bottom: 2px solid var(--border); margin-bottom: 2rem;
+        }
+        .tab-button {
+            padding: 1rem 1.5rem; cursor: pointer; background: none; border: none;
+            font-size: 1.1rem; font-weight: 600; color: var(--muted);
+            border-bottom: 4px solid transparent; position: relative; top: 2px;
+        }
+        .tab-button.active { color: var(--primary); border-bottom-color: var(--accent); }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .document-container {
+            background: white; padding: 2rem; border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+        .document-header { text-align: center; margin-bottom: 2rem; }
+        .document-header h2 { color: var(--primary); font-size: 1.8rem; }
+        .document-header p { color: var(--muted); font-size: 1rem; }
+        .document-footer {
+            text-align: center; margin-top: 3rem;
+            padding-top: 1rem; border-top: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+        th, td { border: 1px solid var(--border); padding: 0.75rem; text-align: left; }
+        th { background: var(--light); }
+        .signature-line {
+            border-bottom: 1px solid var(--text); height: 40px;
+            width: 100%; display: block;
+        }
+        .requerimientos-list { list-style: none; padding-left: 0; }
+        .requerimientos-list h3 { color: var(--primary); margin-top: 1.5rem; }
+        .requerimientos-list li {
+            background: var(--light); padding: 0.75rem; border-radius: 8px;
+            margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;
+        }
+        .requerimientos-list li::before {
+            content: '☐'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+            color: var(--muted);
+        }
+        .contrato-section { margin: 1.5rem 0; }
+        .contrato-section h3 { color: var(--primary); margin-bottom: 0.5rem; }
+        .contrato-section ol { padding-left: 20px; }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-content">
+            <h1><i class="fa-solid fa-clipboard-list" style="color: var(--accent);"></i> Módulo de Logística</h1>
+            <a href="carta-descriptiva.html" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver a Carta Descriptiva</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="tabs">
+            <button class="tab-button active" onclick="showTab('asistencia')">
+                <i class="fa-solid fa-users"></i> Lista de Asistencia
+            </button>
+            <button class="tab-button" onclick="showTab('requerimientos')">
+                <i class="fa-solid fa-check-square"></i> Lista de Requerimientos
+            </button>
+            <button class="tab-button" onclick="showTab('contrato')">
+                <i class="fa-solid fa-file-signature"></i> Contrato de Aprendizaje
+            </button>
+        </div>
+
+        <div id="asistencia" class="tab-content active">
+            <div class="document-container" id="asistencia-printable">
+                <div class="document-header">
+                    <h2>LISTA DE ASISTENCIA</h2>
+                    <p id="asistencia-cursoNombre">Nombre del Curso</p>
+                </div>
+                <table>
+                    <tr>
+                        <td><strong>Instructor:</strong> <span id="asistencia-instructor"></span></td>
+                        <td><strong>Lugar:</strong> <span id="asistencia-lugar"></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fecha:</strong> <span id="asistencia-fecha"></span></td>
+                        <td><strong>Duración:</strong> <span id="asistencia-duracion"></span> horas</td>
+                    </tr>
+                </table>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">No.</th>
+                            <th>NOMBRE COMPLETO</th>
+                            <th style="width: 40%;">FIRMA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaAsistenciaBody">
+                        </tbody>
+                </table>
+            </div>
+            <div class="document-footer">
+                <button class="btn btn-primary" onclick="printSection('asistencia-printable')"><i class="fa-solid fa-print"></i> Imprimir Lista</button>
+            </div>
+        </div>
+
+        <div id="requerimientos" class="tab-content">
+            <div class="document-container" id="requerimientos-printable">
+                <div class="document-header">
+                    <h2>LISTA DE VERIFICACIÓN DE REQUERIMIENTOS</h2>
+                    <p id="requerimientos-cursoNombre">Nombre del Curso</p>
+                </div>
+                <div id="requerimientos-body">
+                    </div>
+            </div>
+             <div class="document-footer">
+                <button class="btn btn-primary" onclick="printSection('requerimientos-printable')"><i class="fa-solid fa-print"></i> Imprimir Requerimientos</button>
+            </div>
+        </div>
+
+        <div id="contrato" class="tab-content">
+            <div class="document-container" id="contrato-printable">
+                <div class="document-header">
+                    <h2>CONTRATO DE APRENDIZAJE</h2>
+                    <p id="contrato-cursoNombre">Nombre del Curso</p>
+                </div>
+                 <table>
+                    <tr>
+                        <td><strong>Instructor:</strong> <span id="contrato-instructor"></span></td>
+                        <td><strong>Lugar:</strong> <span id="contrato-lugar"></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fecha:</strong> <span id="contrato-fecha"></span></td>
+                        <td><strong>Duración:</strong> <span id="contrato-duracion"></span> horas</td>
+                    </tr>
+                </table>
+
+                <div class="contrato-section">
+                    <h3>Compromisos del Facilitador/Instructor</h3>
+                    <ol>
+                        <li>Conducir el curso con profesionalismo, objetividad y apego a los contenidos planificados.</li>
+                        <li>Fomentar un ambiente de respeto, inclusión y participación activa.</li>
+                        <li>Brindar información actualizada, pertinente y alineada a los objetivos del curso.</li>
+                        <li>Atender y aclarar las dudas de los participantes para promover el aprendizaje significativo.</li>
+                        <li>Evaluar de manera justa y transparente, conforme a los criterios establecidos.</li>
+                    </ol>
+                </div>
+
+                <div class="contrato-section">
+                    <h3>Compromisos del Participante</h3>
+                    <ol>
+                        <li>Participar activamente, aportando ideas y respetando las opiniones de los demás.</li>
+                        <li>Cumplir puntualmente con los horarios y las actividades asignadas.</li>
+                        <li>Mantener una conducta de respeto hacia los compañeros y el instructor.</li>
+                        <li>Aplicar los conocimientos adquiridos con apego a la normatividad y políticas correspondientes.</li>
+                        <li>Solicitar aclaraciones cuando surjan dudas sobre los contenidos o procedimientos.</li>
+                    </ol>
+                </div>
+                 <table style="margin-top: 3rem;">
+                    <tr>
+                        <td style="border: none; text-align: center;">
+                            <span class="signature-line"></span>
+                            <strong>Nombre y Firma del Participante</strong>
+                        </td>
+                        <td style="border: none; text-align: center;">
+                            <span class="signature-line"></span>
+                            <strong>Nombre y Firma del Instructor</strong>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+             <div class="document-footer">
+                <button class="btn btn-primary" onclick="printSection('contrato-printable')"><i class="fa-solid fa-print"></i> Imprimir Contrato</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const KEY = 'EC0301_CARTA_PRO';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
+
+        function loadData() {
+            const savedData = localStorage.getItem(KEY);
+            if (!savedData) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No hay datos',
+                    html: 'Parece que no has guardado una Carta Descriptiva aún. <br><br> Por favor, ve a <strong>carta-descriptiva.html</strong>, llena los datos y haz clic en <strong>"Guardar"</strong> para poder generar los documentos de logística.',
+                    confirmButtonText: 'Ir a la Carta Descriptiva'
+                }).then(() => {
+                    window.location.href = 'carta-descriptiva.html';
+                });
+                return;
+            }
+
+            const data = JSON.parse(savedData);
+            populateAsistencia(data);
+            populateRequerimientos(data);
+            populateContrato(data);
+        }
+
+        function populateAsistencia(data) {
+            document.getElementById('asistencia-cursoNombre').textContent = data.nombre || 'Nombre del Curso';
+            document.getElementById('asistencia-instructor').textContent = data.facilitador || '';
+            document.getElementById('asistencia-lugar').textContent = data.lugar || '';
+            document.getElementById('asistencia-fecha').textContent = data.fechas || '';
+            document.getElementById('asistencia-duracion').textContent = data.duracion || '';
+
+            const tbody = document.getElementById('listaAsistenciaBody');
+            tbody.innerHTML = ''; // Limpiar contenido previo
+            const numParticipantes = parseInt(data.num) || 15; // Usar 15 como default
+
+            for (let i = 1; i <= numParticipantes; i++) {
+                const row = `<tr>
+                    <td>${i}</td>
+                    <td></td>
+                    <td><span class="signature-line"></span></td>
+                </tr>`;
+                tbody.innerHTML += row;
+            }
+        }
+
+        function populateRequerimientos(data) {
+            document.getElementById('requerimientos-cursoNombre').textContent = data.nombre || 'Nombre del Curso';
+            const container = document.getElementById('requerimientos-body');
+            container.innerHTML = ''; // Limpiar
+            
+            const requerimientos = [
+                { title: 'Instalaciones y Mobiliario', content: data.rq.inst },
+                { title: 'Equipo Tecnológico', content: data.rq.equipo },
+                { title: 'Materiales Didácticos', content: data.rq.mats },
+                { title: 'Recursos Humanos', content: data.rq.rh },
+                { title: 'Consumibles', content: data.rq.consumibles },
+                { title: 'Otros', content: data.rq.otros }
+            ];
+
+            requerimientos.forEach(req => {
+                if(req.content && req.content.trim() !== '') {
+                    let listItems = req.content.split('\n').map(item => `<li>${item.trim()}</li>`).join('');
+                    container.innerHTML += `<ul class="requerimientos-list"><h3>${req.title}</h3>${listItems}</ul>`;
+                }
+            });
+        }
+
+        function populateContrato(data) {
+            document.getElementById('contrato-cursoNombre').textContent = data.nombre || 'Nombre del Curso';
+            document.getElementById('contrato-instructor').textContent = data.facilitador || '';
+            document.getElementById('contrato-lugar').textContent = data.lugar || '';
+            document.getElementById('contrato-fecha').textContent = data.fechas || '';
+            document.getElementById('contrato-duracion').textContent = data.duracion || '';
+        }
+
+        function showTab(tabName) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(button => button.classList.remove('active'));
+
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+
+        function printSection(sectionId) {
+            const printContent = document.getElementById(sectionId).innerHTML;
+            const originalContent = document.body.innerHTML;
+            
+            document.body.innerHTML = `<div class="document-container">${printContent}</div>`;
+            window.print();
+            document.body.innerHTML = originalContent;
+            
+            // Recargar los datos y re-establecer los listeners después de imprimir
+            loadData();
+            // Re-establecer la pestaña activa visualmente
+            const activeTabId = document.querySelector('.tab-content.active').id;
+            showTab(activeTabId);
+        }
+    </script>
+</body>
+</html>

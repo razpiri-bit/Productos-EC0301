@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Evaluaciones - EC0301</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --primary: #1E3A8A; --accent: #FF6B35; --success: #22C55E;
+            --light: #F8FAFC; --border: #E5E7EB; --text: #1F2937; --muted: #6B7280;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #F1F5F9; color: var(--text);
+        }
+        .header {
+            background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky; top: 0; z-index: 100; border-bottom: 3px solid var(--accent);
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+        .header-content {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem; max-width: 1200px; margin: 0 auto;
+        }
+        h1 { font-size: 1.75rem; color: var(--primary); display: flex; align-items: center; gap: 0.75rem; }
+        .btn {
+            padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease; display: inline-flex;
+            align-items: center; gap: 0.5rem; text-decoration: none;
+        }
+        .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+
+        .tabs {
+            display: flex; flex-wrap: wrap; border-bottom: 2px solid var(--border); margin-bottom: 2rem;
+        }
+        .tab-button {
+            padding: 1rem 1.5rem; cursor: pointer; background: none; border: none;
+            font-size: 1rem; font-weight: 600; color: var(--muted);
+            border-bottom: 4px solid transparent; position: relative; top: 2px;
+        }
+        .tab-button.active { color: var(--primary); border-bottom-color: var(--accent); }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .document-container {
+            background: white; padding: 2.5rem; border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+        .document-header { text-align: center; margin-bottom: 2rem; }
+        .document-header h2 { color: var(--primary); font-size: 1.8rem; text-transform: uppercase; }
+        .document-header h3 { color: var(--muted); font-weight: 500; font-size: 1.2rem; }
+        .document-info-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
+            text-align: left; border: 1px solid var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 2rem;
+        }
+        .document-info-grid strong { color: var(--primary); }
+        .document-footer { text-align: center; margin-top: 2rem; }
+        
+        .instructions {
+            background: var(--light); padding: 1.5rem; border-radius: 8px;
+            border-left: 4px solid var(--accent); margin-bottom: 2rem;
+        }
+        .instructions h4 { color: var(--primary); margin-bottom: 0.5rem; }
+        .instructions p { margin: 0.25rem 0; }
+
+        .question { margin-bottom: 1.5rem; }
+        .question p { font-weight: 600; margin-bottom: 0.75rem; }
+        .question .options { display: flex; flex-direction: column; gap: 0.5rem; padding-left: 1.5rem; }
+        .question .option { display: flex; align-items: center; gap: 0.5rem; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { border: 1px solid var(--border); padding: 0.75rem; text-align: left; }
+        th { background: var(--light); }
+
+        .satisfaction-scale { display: flex; justify-content: space-around; }
+        .satisfaction-scale div { text-align: center; }
+
+        /* Estilos para impresión */
+        @media print {
+            body * { visibility: hidden; }
+            .printable, .printable * { visibility: visible; }
+            .printable { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header no-print">
+        <div class="header-content">
+            <h1><i class="fa-solid fa-file-signature" style="color: var(--accent);"></i> Módulo de Evaluaciones</h1>
+            <a href="carta-descriptiva.html" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Volver</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="tabs no-print">
+            <button class="tab-button active" onclick="showTab('diagnostica')">Diagnóstica</button>
+            <button class="tab-button" onclick="showTab('formativa')">Formativa</button>
+            <button class="tab-button" onclick="showTab('sumativa')">Sumativa</button>
+            <button class="tab-button" onclick="showTab('satisfaccion')">Satisfacción</button>
+            <button class="tab-button" onclick="showTab('respuestas')"><i class="fa-solid fa-key"></i> Hoja de Respuestas</button>
+        </div>
+
+        <div id="diagnostica" class="tab-content active"></div>
+        <div id="formativa" class="tab-content"></div>
+        <div id="sumativa" class="tab-content"></div>
+        <div id="satisfaccion" class="tab-content"></div>
+        <div id="respuestas" class="tab-content"></div>
+        
+    </main>
+
+    <script>
+        const KEY = 'EC0301_CARTA_PRO';
+
+        // Plantillas de contenido
+        const TEMPLATES = {
+            evaluacion: (data, tipo, tituloInstrumento, preguntas) => `
+                <div class="document-container printable" id="${tipo}-printable">
+                    <div class="document-header">
+                        <h2>EVALUACIÓN ${tipo.toUpperCase()}</h2>
+                        <h3>${tituloInstrumento}</h3>
+                    </div>
+                    <div class="document-info-grid">
+                        <div><strong>Curso:</strong> ${data.nombre || ''}</div>
+                        <div><strong>Lugar:</strong> ${data.lugar || ''}</div>
+                        <div><strong>Instructor:</strong> ${data.facilitador || ''}</div>
+                        <div><strong>Fecha:</strong> ${data.fechas || ''}</div>
+                    </div>
+                    <div class="instructions">
+                        <h4>Instrucciones para el participante:</h4>
+                        <p>Lea con atención y marque con una "X" la opción que considere correcta.</p>
+                        <p>Dispone de 10 minutos para completar la evaluación.</p>
+                    </div>
+                    <div class="questions-container">
+                        ${preguntas.map((p, i) => `
+                            <div class="question">
+                                <p>${i + 1}. ${p.pregunta}</p>
+                                <div class="options">
+                                    ${p.opciones.map(op => `<div class="option"><strong>${op.letra})</strong> ${op.texto}</div>`).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div style="margin-top: 3rem;">
+                        <p><strong>Nombre del Participante:</strong> __________________________________________________</p>
+                    </div>
+                </div>
+                <div class="document-footer no-print">
+                    <button class="btn btn-primary" onclick="printSection('${tipo}-printable')"><i class="fa-solid fa-print"></i> Imprimir Evaluación</button>
+                </div>
+            `,
+            formativa: (data) => `
+                <div class="document-container printable" id="formativa-printable">
+                    <div class="document-header">
+                        <h2>EVALUACIÓN FORMATIVA</h2>
+                        <h3>Guía de Observación</h3>
+                    </div>
+                     <div class="document-info-grid">
+                        <div><strong>Curso:</strong> ${data.nombre || ''}</div>
+                        <div><strong>Actividad a Evaluar:</strong> ${data.ev.form.ins || 'Ejercicio Práctico'}</div>
+                        <div><strong>Instructor:</strong> ${data.facilitador || ''}</div>
+                        <div><strong>Fecha:</strong> ${data.fechas || ''}</div>
+                    </div>
+                    <div class="instructions">
+                        <h4>Instrucciones para el evaluador:</h4>
+                        <p>Observe el desempeño del participante durante la actividad y marque si cumple o no con los siguientes criterios. Anote las observaciones pertinentes.</p>
+                    </div>
+                    <table>
+                        <thead><tr><th>Criterio a Observar</th><th style="width:10%">Cumple</th><th style="width:10%">No Cumple</th><th>Observaciones</th></tr></thead>
+                        <tbody>
+                            <tr><td>1. Sigue las instrucciones del ejercicio paso a paso.</td><td></td><td></td><td></td></tr>
+                            <tr><td>2. Aplica la técnica o procedimiento enseñado de forma correcta.</td><td></td><td></td><td></td></tr>
+                            <tr><td>3. Colabora activamente con su equipo (si aplica).</td><td></td><td></td><td></td></tr>
+                            <tr><td>4. Demuestra una actitud proactiva y de interés.</td><td></td><td></td><td></td></tr>
+                            <tr><td>5. (Criterio específico del curso generado por IA).</td><td></td><td></td><td></td></tr>
+                        </tbody>
+                    </table>
+                     <div style="margin-top: 3rem;">
+                        <p><strong>Nombre del Participante:</strong> __________________________________________________</p>
+                    </div>
+                </div>
+                <div class="document-footer no-print">
+                    <button class="btn btn-primary" onclick="printSection('formativa-printable')"><i class="fa-solid fa-print"></i> Imprimir Guía</button>
+                </div>
+            `,
+            satisfaccion: (data) => `
+                 <div class="document-container printable" id="satisfaccion-printable">
+                    <div class="document-header">
+                        <h2>EVALUACIÓN DE SATISFACCIÓN</h2>
+                        <h3>Encuesta de Reacción</h3>
+                    </div>
+                     <div class="document-info-grid">
+                        <div><strong>Curso:</strong> ${data.nombre || ''}</div>
+                        <div><strong>Instructor:</strong> ${data.facilitador || ''}</div>
+                        <div><strong>Fecha:</strong> ${data.fechas || ''}</div>
+                    </div>
+                    <div class="instructions">
+                        <h4>Instrucciones:</h4>
+                        <p>Su opinión es muy importante. Marque con una "X" la opción que mejor refleje su experiencia.</p>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr><th>Aspecto a Evaluar</th><th>Excelente</th><th>Bueno</th><th>Regular</th><th>Malo</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Los objetivos del curso se cumplieron.</td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>El contenido fue relevante y útil.</td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>El instructor demostró dominio del tema.</td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Las actividades prácticas facilitaron el aprendizaje.</td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>Los materiales didácticos fueron de calidad.</td><td></td><td></td><td></td><td></td></tr>
+                            <tr><td>La organización y logística del curso fueron adecuadas.</td><td></td><td></td><td></td><td></td></tr>
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 2rem;">
+                        <h4>Comentarios y Sugerencias:</h4>
+                        <div style="border:1px solid var(--border); height: 100px; border-radius:8px;"></div>
+                    </div>
+                </div>
+                <div class="document-footer no-print">
+                    <button class="btn btn-primary" onclick="printSection('satisfaccion-printable')"><i class="fa-solid fa-print"></i> Imprimir Encuesta</button>
+                </div>
+            `,
+             respuestas: (data, diag, sum) => `
+                <div class="document-container printable" id="respuestas-printable">
+                    <div class="document-header">
+                        <h2>HOJA DE RESPUESTAS PARA EL INSTRUCTOR</h2>
+                    </div>
+                     <div class="document-info-grid">
+                        <div><strong>Curso:</strong> ${data.nombre || ''}</div>
+                        <div><strong>Instructor:</strong> ${data.facilitador || ''}</div>
+                    </div>
+                    
+                    <h3 style="color:var(--primary); margin-top: 2rem;">Respuestas - Evaluación Diagnóstica</h3>
+                    <table><thead><tr><th style="width:10%">Pregunta</th><th>Respuesta Correcta</th></tr></thead><tbody>
+                        ${diag.map((p, i) => `<tr><td>${i+1}</td><td><strong>${p.correcta})</strong> ${p.opciones.find(o => o.letra === p.correcta).texto}</td></tr>`).join('')}
+                    </tbody></table>
+
+                    <h3 style="color:var(--primary); margin-top: 2rem;">Criterios Clave - Evaluación Formativa</h3>
+                    <p>Evaluar con base en la Guía de Observación, poniendo especial atención en la correcta aplicación de los procedimientos enseñados y la resolución de problemas durante la actividad práctica.</p>
+
+                    <h3 style="color:var(--primary); margin-top: 2rem;">Respuestas - Evaluación Sumativa</h3>
+                     <table><thead><tr><th style="width:10%">Pregunta</th><th>Respuesta Correcta</th></tr></thead><tbody>
+                        ${sum.map((p, i) => `<tr><td>${i+1}</td><td><strong>${p.correcta})</strong> ${p.opciones.find(o => o.letra === p.correcta).texto}</td></tr>`).join('')}
+                    </tbody></table>
+                </div>
+                <div class="document-footer no-print">
+                    <button class="btn btn-primary" onclick="printSection('respuestas-printable')"><i class="fa-solid fa-print"></i> Imprimir Respuestas</button>
+                </div>
+            `
+        };
+
+        // Datos de ejemplo (serían generados por IA)
+        const PREGUNTAS_DIAGNOSTICA = [
+            { pregunta: '¿Cuál es el primer paso en el diseño de un curso?', opciones: [{letra: 'A', texto: 'Crear el manual'}, {letra: 'B', texto: 'Definir los objetivos'}, {letra: 'C', texto: 'Reservar el aula'}], correcta: 'B' },
+            { pregunta: 'El dominio de aprendizaje "Psicomotriz" se refiere a:', opciones: [{letra: 'A', texto: 'Conocimientos'}, {letra: 'B', texto: 'Actitudes'}, {letra: 'C', texto: 'Habilidades físicas'}], correcta: 'C' }
+        ];
+        const PREGUNTAS_SUMATIVA = [
+            { pregunta: 'Un objetivo de aprendizaje SMART debe ser:', opciones: [{letra: 'A', texto: 'Específico y Medible'}, {letra: 'B', texto: 'General y Amplio'}, {letra: 'C', texto: 'Corto y Simple'}], correcta: 'A' },
+            { pregunta: 'La evaluación que se realiza al final del curso se llama:', opciones: [{letra: 'A', texto: 'Diagnóstica'}, {letra: 'B', texto: 'Formativa'}, {letra: 'C', texto: 'Sumativa'}], correcta: 'C' }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedData = localStorage.getItem(KEY);
+            if (!savedData) {
+                Swal.fire({
+                    icon: 'warning', title: 'No hay datos',
+                    html: 'No se encontraron datos de la Carta Descriptiva. Por favor, llénala y guárdala primero.',
+                    confirmButtonText: 'Ir a la Carta Descriptiva'
+                }).then(() => { window.location.href = 'carta-descriptiva.html'; });
+                return;
+            }
+            const data = JSON.parse(savedData);
+
+            // Generar contenido de cada pestaña
+            document.getElementById('diagnostica').innerHTML = TEMPLATES.evaluacion(data, 'diagnostica', 'Cuestionario Inicial', PREGUNTAS_DIAGNOSTICA);
+            document.getElementById('formativa').innerHTML = TEMPLATES.formativa(data);
+            document.getElementById('sumativa').innerHTML = TEMPLATES.evaluacion(data, 'sumativa', 'Cuestionario Final', PREGUNTAS_SUMATIVA);
+            document.getElementById('satisfaccion').innerHTML = TEMPLATES.satisfaccion(data);
+            document.getElementById('respuestas').innerHTML = TEMPLATES.respuestas(data, PREGUNTAS_DIAGNOSTICA, PREGUNTAS_SUMATIVA);
+        });
+        
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+
+        function printSection(sectionId) {
+            const printContent = document.getElementById(sectionId).innerHTML;
+            const originalContent = document.body.innerHTML;
+            const styles = Array.from(document.styleSheets).map(styleSheet => {
+                try {
+                    return Array.from(styleSheet.cssRules).map(rule => rule.cssText).join('');
+                } catch (e) {
+                    console.log('Access to stylesheet %s is denied. Ignoring.', styleSheet.href);
+                }
+            }).filter(Boolean).join('\n');
+
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Imprimir Evaluación</title>');
+            printWindow.document.write('<style>' + styles + '</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(printContent);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => { printWindow.print(); }, 500);
+        }
+    </script>
+</body>
+</html>
