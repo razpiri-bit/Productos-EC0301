@@ -188,4 +188,6 @@ app.post('/api/validate-code', (req, res) => {
 // Si se ejecuta localmente, usará el puerto 3001
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(
+  console.log(`Servidor iniciado y escuchando en el puerto ${PORT}`);
+  console.log(`La URL del dominio configurada es: ${YOUR_DOMAIN}`); // Para depuración
+});
