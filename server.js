@@ -1,5 +1,5 @@
 // server.js
-// Express + CORS + estáticos + Stripe Checkout con hardening para Render
+// Express + CORS + estáticos + Stripe Checkout con hardening
 
 const path = require('path');
 const express = require('express');
@@ -7,16 +7,16 @@ const cors = require('cors');
 
 const app = express();
 
-/* ===== 1) Seguridad y CORS ===== */
+// 1) CORS: lista blanca de orígenes
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
-  'https://productos-ec0301-1-0-dwk2.onrender.com' // Ajusta a tu frontend
+  'https://productos-ec0301-1-0-dwk2.onrender.com'
 ];
 
 const corsOptions = {
   origin(origin, cb) {
-    if (!origin) return cb(null, true); // healthchecks/curl
+    if (!origin) return cb(null, true);
     return allowedOrigins.includes(origin)
       ? cb(null, true)
       : cb(new Error('Origin no permitido por CORS'));
@@ -28,9 +28,9 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Preflight
+app.options('*', cors(corsOptions)); // preflight
 
-// Headers básicos de seguridad (sin helmet para mantenerlo simple)
+// Headers básicos de seguridad
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -38,27 +38,26 @@ app.use((req, res, next) => {
   next();
 });
 
-/* ===== 2) Body parser ===== */
+// 2) Body parser
 app.use(express.json());
 
-/* ===== 3) Estáticos y ruta raíz ===== */
-app.use(express.static(path.join(__dirname, 'public'))); // /css, /js, etc.
+// 3) Estáticos y ruta raíz: sirve public/index.html
+app.use(express.static(path.join(__dirname, 'public'))); // /css, /js, /assets
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-/* ===== 4) Health y Config para diagnóstico ===== */
+// 4) Health y config
 app.get('/health', (_req, res) => res.status(200).send('ok'));
-app.get('/config', (req, res) => {
-  // Exponer SOLO información no sensible para validar conectividad desde el navegador
+app.get('/config', (_req, res) => {
   res.status(200).json({
     env: process.env.NODE_ENV || 'development',
-    frontendOrigins: allowedOrigins,
-    hasStripeKey: !!process.env.STRIPE_SECRET_KEY
+    hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+    frontendOrigins: allowedOrigins
   });
 });
 
-/* ===== 5) Utilidades de validación ===== */
+// 5) Utilidades de validación
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email || '').toLowerCase());
 }
@@ -66,14 +65,12 @@ function sanitizeText(s) {
   return String(s || '').trim().replace(/\s+/g, ' ').slice(0, 120);
 }
 
-/* ===== 6) Endpoint de Stripe Checkout ===== */
+// 6) Stripe Checkout
 app.post('/create-checkout-session', async (req, res) => {
-  // 6.1) Comprobación temprana de la clave
   if (!process.env.STRIPE_SECRET_KEY) {
     return res.status(500).json({ message: 'Stripe no está configurado (STRIPE_SECRET_KEY ausente).' });
   }
 
-  // 6.2) Carga de Stripe con manejo de errores
   let stripe;
   try {
     stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -81,22 +78,18 @@ app.post('/create-checkout-session', async (req, res) => {
     return res.status(500).json({ message: 'No se pudo cargar Stripe: ' + e.message });
   }
 
-  // 6.3) Validar payload
   const nombre = sanitizeText(req.body?.nombre);
   const email = String(req.body?.email || '').toLowerCase();
-
   if (!nombre || !isValidEmail(email)) {
     return res.status(400).json({ message: 'Datos inválidos: nombre o email.' });
   }
 
-  // 6.4) Crear sesión de Checkout
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      payment_method_types: ['card', 'oxxo'],
+      payment_method_types: ['card','oxxo'],
       payment_method_options: { oxxo: { expires_after_days: 2 } },
       customer_email: email,
-      // Importes en centavos (997 MXN = 99700)
       line_items: [
         {
           price_data: {
@@ -116,11 +109,10 @@ app.post('/create-checkout-session', async (req, res) => {
 
     return res.status(200).json({ url: session.url });
   } catch (err) {
-    // Propaga el mensaje real de Stripe para depuración del frontend
     return res.status(500).json({ message: err.message });
   }
 });
 
-/* ===== 7) Puesto para Render ===== */
+// 7) Puerto para Render
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor escuchando en ${PORT}`));
