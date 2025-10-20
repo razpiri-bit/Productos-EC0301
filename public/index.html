@@ -1,163 +1,215 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkillsCert - Generador de Documentos EC0301</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
-        :root { /* Mismos estilos */
-            --primary: #1E3A8A; --accent: #FF6B35; --success: #22C55E;
-            --light: #F8FAFC; --border: #E5E7EB; --text: #1F2937; --muted: #6B7280;
-        }
-        body { font-family: sans-serif; background: #F1F5F9; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
-        .header { background: white; padding: 1rem 0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-bottom: 3px solid var(--primary); }
-        .header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
-        .logo { font-size: 1.75rem; font-weight: 700; color: var(--primary); }
-        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; margin-top: 3rem; }
-        @media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } }
-        .hero-text h1 { font-size: 2.8rem; color: var(--primary); }
-        .features-list { list-style: none; padding: 0; margin: 1rem 0; }
-        .features-list li { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-        .features-list i { color: var(--success); }
-        .registration-card { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 1.25rem; }
-        .input-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; }
-        .input-group input { width: 100%; padding: 0.875rem; border: 2px solid var(--border); border-radius: 10px; font-size: 1rem; }
-        .payment-options h3 { text-align: center; color: var(--muted); margin-bottom: 1rem; }
-        /* Ajuste para 2 botones */
-        .payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-        .btn { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; width: 100%; height: 100%; /* Para igualar altura */}
-        .payment-btn { background: var(--light); border: 2px solid var(--border); text-align: center; }
-        .payment-btn i { font-size: 1.5rem; margin-bottom: 0.5rem; display: block;}
-        .footer { background: var(--primary); color: white; text-align: center; padding: 2rem 1rem; margin-top: 4rem; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SkillsCert - Generador de Documentos EC0301</title>
+
+  <!-- UI libs -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    :root{
+      --primary:#1E3A8A; --accent:#FF6B35; --success:#22C55E;
+      --light:#F8FAFC; --border:#E5E7EB; --text:#1F2937; --muted:#6B7280;
+    }
+    body{font-family:sans-serif;background:#F1F5F9;margin:0;color:var(--text)}
+    .container{max-width:1200px;margin:0 auto;padding:2rem 1rem}
+    .header{background:#fff;padding:1rem 0;box-shadow:0 2px 10px rgba(0,0,0,.05);border-bottom:3px solid var(--primary)}
+    .header-content{display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;padding:0 1rem}
+    .logo{font-size:1.75rem;font-weight:700;color:var(--primary)}
+    .main-content{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;margin-top:3rem}
+    @media (max-width:900px){.main-content{grid-template-columns:1fr}}
+    .hero-text h1{font-size:2.4rem;color:var(--primary);margin:0 0 .5rem}
+    .features-list{list-style:none;padding:0;margin:1rem 0}
+    .features-list li{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
+    .features-list i{color:var(--success)}
+    .registration-card{background:#fff;padding:2.5rem;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.1)}
+    .input-group{margin-bottom:1.25rem}
+    .input-group label{display:block;font-weight:600;margin-bottom:.5rem}
+    .input-group input{width:100%;padding:.875rem;border:2px solid var(--border);border-radius:10px;font-size:1rem}
+    .payment-options h3{text-align:center;color:var(--muted);margin:1rem 0}
+    .payment-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+    .btn{padding:.8rem 1.2rem;border:none;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;width:100%;height:100%}
+    .payment-btn{background:var(--light);border:2px solid var(--border);text-align:center}
+    .payment-btn i{font-size:1.5rem;margin-bottom:.5rem;display:block}
+    .footer{background:var(--primary);color:#fff;text-align:center;padding:2rem 1rem;margin-top:4rem}
+  </style>
 </head>
 <body>
-    <header class="header"><div class="header-content"><div class="logo">SkillsCert</div></div></header>
-    <main class="container">
-        <div class="main-content">
-            <div class="hero-text">
-                <h1>Genera tus Documentos <span style="color: var(--accent);">EC0301</span> en Minutos</h1>
-                <ul class="features-list">
-                    <li><i class="fa-solid fa-check-circle"></i> Asistente IA para objetivos.</li>
-                    <li><i class="fa-solid fa-file-pdf"></i> Generación automática de formatos.</li>
-                    <li><i class="fa-solid fa-cloud-arrow-down"></i> Exportación a PDF y Word.</li>
-                    <li><i class="fa-solid fa-shield-halved"></i> 100% alineado al estándar.</li>
-                </ul>
-                <p><strong>Obtén 3 meses de acceso ilimitado.</strong></p>
+  <header class="header">
+    <div class="header-content"><div class="logo">SkillsCert</div></div>
+  </header>
+
+  <main class="container">
+    <div class="main-content">
+      <div class="hero-text">
+        <h1>Genera tus Documentos <span style="color:var(--accent)">EC0301</span> en minutos</h1>
+        <ul class="features-list">
+          <li><i class="fa-solid fa-check-circle"></i> Asistente IA para objetivos.</li>
+          <li><i class="fa-solid fa-file-pdf"></i> Generación automática de formatos.</li>
+          <li><i class="fa-solid fa-cloud-arrow-down"></i> Exportación a PDF y Word.</li>
+          <li><i class="fa-solid fa-shield-halved"></i> 100% alineado al estándar.</li>
+        </ul>
+        <p><strong>Obtén 3 meses de acceso ilimitado.</strong></p>
+      </div>
+
+      <div class="registration-card">
+        <h2>Crea tu cuenta</h2>
+
+        <form id="registrationForm" novalidate>
+          <div class="input-group">
+            <label for="nombre">Nombre completo</label>
+            <input type="text" id="nombre" name="nombre" placeholder="Tu nombre completo" required/>
+          </div>
+
+          <div class="input-group">
+            <label for="email">Correo electrónico</label>
+            <input type="email" id="email" name="email" placeholder="donde recibirás tu acceso" autocomplete="email" required/>
+          </div>
+
+          <div class="input-group">
+            <label for="whatsapp">WhatsApp (12 dígitos)</label>
+            <input type="tel" id="whatsapp" name="whatsapp" inputmode="numeric" pattern="[0-9]{12}" placeholder="52XXXXXXXXXX" value="52" required/>
+          </div>
+
+          <div class="payment-options">
+            <h3>Elige tu método de pago</h3>
+            <div class="payment-grid">
+              <button type="button" class="payment-btn btn" id="stripe-button">
+                <i class="fa-solid fa-credit-card"></i>
+                Pagar con Tarjeta / OXXO <small>(Automático vía Stripe)</small>
+              </button>
+              <button type="button" class="payment-btn btn" id="transfer-button">
+                <i class="fa-solid fa-university"></i>
+                Pagar con Transferencia <small>(Verificación manual)</small>
+              </button>
             </div>
-            <div class="registration-card">
-                <h2>Crea tu Cuenta</h2>
-                <form id="registrationForm" onsubmit="return false;">
-                    <div class="input-group">
-                        <label for="nombre">Nombre Completo</label>
-                        <input type="text" id="nombre" name="nombre" placeholder="Tu nombre completo" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="email">Correo Electrónico</label>
-                        <input type="email" id="email" name="email" placeholder="donde recibirás tu acceso" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="whatsapp">WhatsApp (12 dígitos)</label>
-                        <input type="tel" id="whatsapp" name="whatsapp" required value="52" pattern="[0-9]{12}" title="Debe contener 12 dígitos (código de país + número)">
-                    </div>
-                    <div class="payment-options">
-                        <h3>Elige tu método de pago</h3>
-                        <div class="payment-grid">
-                            <button type="button" class="payment-btn btn" id="stripe-button">
-                                <i class="fa-solid fa-credit-card"></i> Pagar con Tarjeta / OXXO <small>(Automático vía Stripe)</small>
-                            </button>
-                             <button type="button" class="payment-btn btn" id="transfer-button">
-                                <i class="fa-solid fa-university"></i> Pagar con Transferencia <small>(Verificación Manual)</small>
-                            </button>
-                        </div>
-                    </div>
-                </form>
-                 <div style="text-align: center; margin-top: 1rem;">
-                    <p><a href="/login.html">¿Ya tienes un código de acceso? Ingresa aquí</a></p>
-                </div>
-            </div>
+          </div>
+        </form>
+
+        <div style="text-align:center;margin-top:1rem">
+          <p><a href="/login.html">¿Ya tienes un código de acceso? Ingresa aquí</a></p>
         </div>
-    </main>
-    <footer class="footer">
-        <p><strong>SkillsCert &copy; 2025</strong></p>
-        <p><a href="mailto:info@skillscert.com.mx" style="color:white;">info@skillscert.com.mx</a> | Cel: 55 3882 2334</p>
-    </footer>
+      </div>
+    </div>
+  </main>
 
-    <script>
-        class FormValidator { /* ... Código de validación sin cambios ... */
-            constructor(formId) { this.form = document.getElementById(formId); }
-            validateForm() {
-                const requiredFields = this.form.querySelectorAll('[required]');
-                for (const field of requiredFields) {
-                    if (!field.checkValidity() || !field.value.trim()) {
-                        Swal.fire({ icon: 'warning', title: 'Campo Incompleto', text: `Revisa: "${field.labels[0].innerText}".`});
-                        field.focus(); return false;
-                    }
-                } return true;
-            }
-            getUserData() { return { nombre: this.form.nombre.value, email: this.form.email.value }; } // Solo necesitamos nombre y email para Stripe
+  <footer class="footer">
+    <p><strong>SkillsCert © 2025</strong></p>
+    <p><a href="mailto:info@skillscert.com.mx" style="color:white">info@skillscert.com.mx</a> | Cel: 55 3882 2334</p>
+  </footer>
+
+  <script>
+    // Utilidad: validación y normalización
+    class FormValidator {
+      constructor(formId){ this.form = document.getElementById(formId); }
+      validateForm(){
+        const required = this.form.querySelectorAll('[required]');
+        for(const field of required){
+          if(!field.checkValidity() || !field.value.trim()){
+            const label = (field.labels && field.labels[0]) ? field.labels[0].innerText : field.name;
+            Swal.fire({icon:'warning',title:'Campo incompleto',text:`Revisa: "${label}".`});
+            field.focus();
+            return false;
+          }
         }
+        return true;
+      }
+      getUserData(){
+        const nombre = this.form.nombre.value.trim();
+        const email = this.form.email.value.trim().toLowerCase();
+        const whatsapp = this.form.whatsapp.value.replace(/\D/g,'');
+        return { nombre, email, whatsapp };
+      }
+    }
 
-        class UIManager { /* ... Código de UI sin cambios ... */
-            static showLoading(button, text = 'Procesando...') { button.dataset.originalText = button.innerHTML; button.innerHTML = `<span style="animation: spin 1s linear infinite; border: 2px solid transparent; border-top-color: currentcolor; border-radius: 50%; width: 1rem; height: 1rem; display: inline-block;"></span> ${text}`; button.disabled = true; }
-            static hideLoading(button) { if (button.dataset.originalText) { button.innerHTML = button.dataset.originalText; } button.disabled = false; }
+    class UIManager {
+      static showLoading(button, text='Procesando...'){
+        button.dataset.originalText = button.innerHTML;
+        button.innerHTML = `<span style="animation: spin 1s linear infinite;border:2px solid transparent;border-top-color:currentcolor;border-radius:50%;width:1rem;height:1rem;display:inline-block;margin-right:.5rem"></span>${text}`;
+        button.disabled = true;
+      }
+      static hideLoading(button){
+        if(button.dataset.originalText) button.innerHTML = button.dataset.originalText;
+        button.disabled = false;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const stripeButton = document.getElementById('stripe-button');
+      const transferButton = document.getElementById('transfer-button');
+      const validator = new FormValidator('registrationForm');
+
+      // Opcional: fija la base si el backend está en otra URL
+      const BASE_URL = ''; // mismo origen. Si usas otro dominio, ponlo aquí, por ejemplo: 'https://tu-api.onrender.com'
+
+      // Pago Stripe (Tarjeta / OXXO)
+      stripeButton.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        if(!validator.validateForm()) return;
+
+        const userData = validator.getUserData();
+        UIManager.showLoading(btn, 'Redirigiendo a pago seguro...');
+
+        try {
+          const resp = await fetch(`${BASE_URL}/create-checkout-session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData),
+            credentials: 'same-origin'
+          });
+
+          // Lee texto primero para poder diagnosticar
+          const raw = await resp.text();
+          let data = {};
+          try { data = raw ? JSON.parse(raw) : {}; } catch { /* cuerpo no-JSON */ }
+
+          if(resp.ok && data.url){
+            window.location.href = data.url;
+            return;
+          }
+
+          const msg = (data && data.message) ? data.message : (raw || 'No se pudo crear la sesión.');
+          throw new Error(msg);
+        } catch (err) {
+          Swal.fire({icon:'error',title:'Error de pago',text:String(err.message || err)});
+        } finally {
+          UIManager.hideLoading(btn);
         }
+      });
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const stripeButton = document.getElementById('stripe-button');
-            const transferButton = document.getElementById('transfer-button');
-            const validator = new FormValidator('registrationForm');
+      // Transferencia SPEI
+      transferButton.addEventListener('click', () => {
+        if(!validator.validateForm()) return;
 
-            // --- Handler para el botón de Stripe (Tarjeta/OXXO) ---
-            stripeButton.addEventListener('click', async (e) => {
-                const buttonElement = e.currentTarget;
-                if (!validator.validateForm()) { return; }
-                const userData = validator.getUserData();
-                UIManager.showLoading(buttonElement, 'Redirigiendo a pago seguro...');
-                try {
-                    const response = await fetch('/create-checkout-session', { // Llama al endpoint de Stripe
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(userData),
-                    });
-                    const session = await response.json();
-                    if (response.ok && session.url) { window.location.href = session.url; }
-                    else { throw new Error(session.message || 'No se pudo crear sesión.'); }
-                } catch (error) {
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo conectar. Intenta de nuevo.' });
-                    UIManager.hideLoading(buttonElement);
-                }
-            });
-
-            // --- Handler para el botón de Transferencia ---
-            transferButton.addEventListener('click', () => {
-                if (!validator.validateForm()) { return; }
-                const userData = validator.getUserData();
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Instrucciones para Transferencia (SPEI)',
-                    html: `
-                        <div style="text-align: left;">
-                            <p>Realiza la transferencia con los siguientes datos:</p>
-                            <div style="background: #F1F5F9; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-                                <p><strong>Banco:</strong> STP</p>
-                                <p><strong>CLABE:</strong> 646180123456789012</p> <p><strong>Beneficiario:</strong> SkillsCert S.A. de C.V.</p>
-                                <p><strong>Concepto:</strong> Pago EC0301 ${userData.nombre}</p>
-                                <p><strong>Monto:</strong> $997.00 MXN</p>
-                            </div>
-                            <p><strong>Importante:</strong></p>
-                            <ol>
-                                <li>Envía tu comprobante a <strong>info@skillscert.com.mx</strong> o por WhatsApp al <strong>55 3882 2334</strong>.</li>
-                                <li>Una vez verificado (puede tardar hasta 24 horas hábiles), te enviaremos tu código de acceso a <strong>${userData.email}</strong>.</li>
-                            </ol>
-                        </div>
-                    `,
-                    confirmButtonText: 'Entendido',
-                    confirmButtonColor: '#1E3A8A'
-                });
-            });
+        const { nombre, email } = validator.getUserData();
+        Swal.fire({
+          icon: 'info',
+          title: 'Instrucciones para Transferencia (SPEI)',
+          html: `
+            <div style="text-align:left">
+              <p>Realiza la transferencia con los siguientes datos:</p>
+              <div style="background:#F1F5F9;padding:1rem;border-radius:8px;margin:1rem 0">
+                <p><strong>Banco:</strong> STP</p>
+                <p><strong>CLABE:</strong> 646180123456789012</p>
+                <p><strong>Beneficiario:</strong> SkillsCert S.A. de C.V.</p>
+                <p><strong>Concepto:</strong> Pago EC0301 ${nombre}</p>
+                <p><strong>Monto:</strong> $997.00 MXN</p>
+              </div>
+              <p><strong>Importante:</strong></p>
+              <ol>
+                <li>Envía tu comprobante a <strong>info@skillscert.com.mx</strong> o WhatsApp <strong>55 3882 2334</strong>.</li>
+                <li>Tras verificar (hasta 24 h hábiles), recibirás tu código de acceso en <strong>${email}</strong>.</li>
+              </ol>
+            </div>
+          `,
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#1E3A8A'
         });
-
+      });
+    });
+  </script>
+</body>
+</html>
