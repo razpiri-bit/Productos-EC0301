@@ -4,8 +4,7 @@
   "description": "Backend para la app EC0301",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -15,7 +14,7 @@
     "stripe": "^15.8.0"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.18.0"
   },
   "author": "SkillsCert",
   "license": "ISC"
