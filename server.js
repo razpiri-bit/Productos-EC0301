@@ -1,126 +1,126 @@
+// server.js
+// Express + CORS + estáticos + Stripe Checkout con hardening para Render
+
+const path = require('path');
 const express = require('express');
-const path = require('path'); // Herramienta de Node.js para manejar rutas de archivos
-const cors = require('cors'); // Reutilizamos CORS
-const { nanoid } = require('nanoid'); // Para generar códigos y tokens
-const postmark = require("postmark"); // Para enviar correos
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); // Para pagos
+const cors = require('cors');
 
-const app = express(); // Crear la aplicación Express
-const PORT = process.env.PORT || 3001; // Render asigna el puerto aquí
-const YOUR_DOMAIN = process.env.YOUR_DOMAIN || `http://localhost:${PORT}`;
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const app = express();
 
-const postmarkClient = new postmark.ServerClient(process.env.POSTMARK_SERVER_TOKEN);
-const validAccessCodes = {}; // Almacén temporal de códigos (¡usa DB en producción!)
+/* ===== 1) Seguridad y CORS ===== */
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://productos-ec0301-1-0-dwk2.onrender.com' // Ajusta a tu frontend
+];
 
-// --- Configuración Middleware ---
-app.use(cors()); // Permitir peticiones de otros orígenes (importante para APIs)
+const corsOptions = {
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // healthchecks/curl
+    return allowedOrigins.includes(origin)
+      ? cb(null, true)
+      : cb(new Error('Origin no permitido por CORS'));
+  },
+  methods: ['GET','POST','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  credentials: false,
+  optionsSuccessStatus: 204
+};
 
-// --- Webhook de Stripe (NECESITA CUERPO RAW, va ANTES de express.json()) ---
-app.post('/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    // ... (Tu código existente del webhook va aquí SIN CAMBIOS) ...
-    // Asegúrate de que toda la lógica de verificación, generación de código y envío de email esté aquí.
-    // Ejemplo abreviado:
-    const sig = req.headers['stripe-signature'];
-    let event;
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-        if (event.type === 'checkout.session.completed') {
-            const session = event.data.object;
-            const email = session.customer_email;
-            const nombre = session.metadata?.nombre_cliente || 'Cliente';
-            const code = `SKILLSCERT-${nanoid(10)}`;
-            const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-            saveAccess({ email, code, expiresAt: expiresAt.toISOString() });
-            await sendEmail({ /* ... datos del email ... */
-                to: email,
-                subject: "Tu acceso SkillsCert EC0301",
-                html: `<h1>¡Hola, ${nombre}!</h1><p>Tu código es: ${code}</p><p><a href="${YOUR_DOMAIN}/login.html">Ingresar</a></p>`,
-                text: `Tu código es ${code}`
-            });
-        }
-        res.status(200).send("recibido");
-    } catch (err) {
-        console.error("Webhook Error:", err.message);
-        res.status(400).send(`Webhook Error: ${err.message}`);
-    }
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Preflight
+
+// Headers básicos de seguridad (sin helmet para mantenerlo simple)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
 });
 
-// --- Servir Archivos Estáticos ---
-// Sirve todos los archivos que están dentro de la carpeta 'public'
-app.use(express.static(path.join(__dirname, 'public')));
-
-// --- Middleware para Parsear JSON ---
-// Va DESPUÉS del webhook y DESPUÉS de servir estáticos si no afecta a las APIs
+/* ===== 2) Body parser ===== */
 app.use(express.json());
 
-// --- Rutas de API ---
-// Tu ruta existente para crear la sesión de pago
+/* ===== 3) Estáticos y ruta raíz ===== */
+app.use(express.static(path.join(__dirname, 'public'))); // /css, /js, etc.
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+/* ===== 4) Health y Config para diagnóstico ===== */
+app.get('/health', (_req, res) => res.status(200).send('ok'));
+app.get('/config', (req, res) => {
+  // Exponer SOLO información no sensible para validar conectividad desde el navegador
+  res.status(200).json({
+    env: process.env.NODE_ENV || 'development',
+    frontendOrigins: allowedOrigins,
+    hasStripeKey: !!process.env.STRIPE_SECRET_KEY
+  });
+});
+
+/* ===== 5) Utilidades de validación ===== */
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email || '').toLowerCase());
+}
+function sanitizeText(s) {
+  return String(s || '').trim().replace(/\s+/g, ' ').slice(0, 120);
+}
+
+/* ===== 6) Endpoint de Stripe Checkout ===== */
 app.post('/create-checkout-session', async (req, res) => {
-    // ... (Tu código existente SIN CAMBIOS va aquí) ...
-    // Ejemplo abreviado:
-     try {
-        const { email, nombre } = req.body;
-        if (!email || !nombre) { return res.status(400).json({ message: 'Nombre y email requeridos.' }); }
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card', 'oxxo'],
-            line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-            mode: 'payment',
-            success_url: `${YOUR_DOMAIN}/exito.html`, // Asegúrate que exito.html está en 'public'
-            cancel_url: `${YOUR_DOMAIN}/cancelar.html`, // Asegúrate que cancelar.html está en 'public'
-            customer_email: email,
-            metadata: { nombre_cliente: nombre }
-        });
-        res.json({ url: session.url });
-    } catch (error) { console.error("Error al crear sesión:", error); res.status(500).send({ error: 'No se pudo iniciar pago.' }); }
+  // 6.1) Comprobación temprana de la clave
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(500).json({ message: 'Stripe no está configurado (STRIPE_SECRET_KEY ausente).' });
+  }
+
+  // 6.2) Carga de Stripe con manejo de errores
+  let stripe;
+  try {
+    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  } catch (e) {
+    return res.status(500).json({ message: 'No se pudo cargar Stripe: ' + e.message });
+  }
+
+  // 6.3) Validar payload
+  const nombre = sanitizeText(req.body?.nombre);
+  const email = String(req.body?.email || '').toLowerCase();
+
+  if (!nombre || !isValidEmail(email)) {
+    return res.status(400).json({ message: 'Datos inválidos: nombre o email.' });
+  }
+
+  // 6.4) Crear sesión de Checkout
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card', 'oxxo'],
+      payment_method_options: { oxxo: { expires_after_days: 2 } },
+      customer_email: email,
+      // Importes en centavos (997 MXN = 99700)
+      line_items: [
+        {
+          price_data: {
+            currency: 'mxn',
+            unit_amount: 99700,
+            product_data: {
+              name: 'Acceso EC0301 (3 meses)',
+              description: `Alumno: ${nombre}`
+            }
+          },
+          quantity: 1
+        }
+      ],
+      success_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/success.html?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/cancel.html'
+    });
+
+    return res.status(200).json({ url: session.url });
+  } catch (err) {
+    // Propaga el mensaje real de Stripe para depuración del frontend
+    return res.status(500).json({ message: err.message });
+  }
 });
 
-// Tu ruta existente para validar el código
-app.post('/api/validate-code', (req, res) => {
-    // ... (Tu código existente SIN CAMBIOS va aquí) ...
-    // Ejemplo abreviado:
-    const { accessCode } = req.body;
-    if (!accessCode) return res.status(400).json({ message: 'Código no proporcionado.' });
-    const codeData = validAccessCodes[accessCode];
-    if (codeData) {
-        const now = new Date(); const expiration = new Date(codeData.expires);
-        if (now < expiration) {
-            const token = `VALID_SESSION_${nanoid(20)}`;
-            res.status(200).json({ message: 'Acceso concedido.', token: token });
-        } else { res.status(401).json({ message: 'Código expirado.' }); }
-    } else { res.status(401).json({ message: 'Código inválido.' }); }
-});
-
-// --- Ruta Catch-All para SPA (Single Page Application) ---
-// Si tu frontend usa rutas del lado del cliente (React Router, Vue Router, etc.), esto es útil.
-// Si no, puedes quitarla o dejarla por si acaso.
-// Asegúrate de que esta ruta esté DESPUÉS de tus rutas API y DESPUÉS de servir estáticos.
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// --- Funciones Helper ---
-// Tus funciones saveAccess y sendEmail (¡adaptadas para Postmark!) van aquí
-function saveAccess(record) {
-    console.log("💾 Guardando acceso (en memoria):", record.code);
-    validAccessCodes[record.code] = { email: record.email, expires: record.expiresAt };
-    // EN PRODUCCIÓN: Reemplaza con DB
-}
-
-async function sendEmail({ to, subject, text, html }) {
-    console.log(`✉️ Enviando email (vía Postmark) a ${to}`);
-    try {
-        await postmarkClient.sendEmail({
-            "From": "info@skillscert.com.mx", // Email verificado
-            "To": to, "Subject": subject, "TextBody": text, "HtmlBody": html,
-            "MessageStream": "outbound"
-        });
-        console.log(`✅ Correo enviado a ${to}`);
-    } catch (error) { console.error("❌ Error enviando correo:", error.message); }
-}
-
-// --- Iniciar el Servidor ---
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor escuchando en el puerto ${PORT}`);
-    console.log(`🔗 Dominio configurado: ${YOUR_DOMAIN}`);
-});
+/* ===== 7) Puesto para Render ===== */
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor escuchando en ${PORT}`));
