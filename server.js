@@ -1,118 +1,59 @@
 // server.js
-// Express + CORS + estáticos + Stripe Checkout con hardening
-
+require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 
 const app = express();
 
-// 1) CORS: lista blanca de orígenes
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'https://productos-ec0301-1-0-dwk2.onrender.com'
-];
+// 1) Montar el webhook ANTES del JSON global (usa RAW internamente)
+const stripeWebhook = require('./routes/stripeWebhook');
+app.use('/', stripeWebhook);
 
-const corsOptions = {
-  origin(origin, cb) {
-    if (!origin) return cb(null, true);
-    return allowedOrigins.includes(origin)
-      ? cb(null, true)
-      : cb(new Error('Origin no permitido por CORS'));
-  },
-  methods: ['GET','POST','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
-  credentials: false,
-  optionsSuccessStatus: 204
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // preflight
-
-// Headers básicos de seguridad
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('Referrer-Policy', 'no-referrer');
-  next();
-});
-
-// 2) Body parser
+// 2) Middlewares estándar para el resto de rutas
+app.use(cors());
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(express.json());
 
-// 3) Estáticos y ruta raíz: sirve public/index.html
-app.use(express.static(path.join(__dirname, 'public'))); // /css, /js, /assets
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// 3) Estáticos y raíz
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// 4) Endpoint de login con código (validación)
+const mysql = require('mysql2/promise');
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10
 });
 
-// 4) Health y config
-app.get('/health', (_req, res) => res.status(200).send('ok'));
-app.get('/config', (_req, res) => {
-  res.status(200).json({
-    env: process.env.NODE_ENV || 'development',
-    hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
-    frontendOrigins: allowedOrigins
-  });
-});
-
-// 5) Utilidades de validación
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email || '').toLowerCase());
-}
-function sanitizeText(s) {
-  return String(s || '').trim().replace(/\s+/g, ' ').slice(0, 120);
-}
-
-// 6) Stripe Checkout
-app.post('/create-checkout-session', async (req, res) => {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return res.status(500).json({ message: 'Stripe no está configurado (STRIPE_SECRET_KEY ausente).' });
-  }
-
-  let stripe;
+app.post('/login-validar', async (req, res) => {
   try {
-    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-  } catch (e) {
-    return res.status(500).json({ message: 'No se pudo cargar Stripe: ' + e.message });
-  }
+    const { email, code } = req.body || {};
+    if (!email || !code) return res.status(400).json({ ok: false, message: 'Datos requeridos' });
 
-  const nombre = sanitizeText(req.body?.nombre);
-  const email = String(req.body?.email || '').toLowerCase();
-  if (!nombre || !isValidEmail(email)) {
-    return res.status(400).json({ message: 'Datos inválidos: nombre o email.' });
-  }
+    const sql = `SELECT email, status, expires_at FROM access_codes WHERE code = ? LIMIT 1`;
+    const [rows] = await pool.execute(sql, [code]);
+    const row = rows && rows[0];
+    if (!row) return res.status(400).json({ ok: false, message: 'Código inválido' });
+    if (row.email.toLowerCase() !== email.toLowerCase())
+      return res.status(400).json({ ok: false, message: 'No corresponde al correo' });
+    if (row.status !== 'active') return res.status(400).json({ ok: false, message: `Código ${row.status}` });
+    if (new Date(row.expires_at) < new Date())
+      return res.status(400).json({ ok: false, message: 'Código expirado' });
 
-  try {
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card','oxxo'],
-      payment_method_options: { oxxo: { expires_after_days: 2 } },
-      customer_email: email,
-      line_items: [
-        {
-          price_data: {
-            currency: 'mxn',
-            unit_amount: 99700,
-            product_data: {
-              name: 'Acceso EC0301 (3 meses)',
-              description: `Alumno: ${nombre}`
-            }
-          },
-          quantity: 1
-        }
-      ],
-      success_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/success.html?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/cancel.html'
-    });
-
-    return res.status(200).json({ url: session.url });
+    return res.status(200).json({ ok: true });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ ok: false, message: err.message });
   }
 });
 
-// 7) Puerto para Render
+// 5) Healthcheck
+app.get('/health', (_req, res) => res.status(200).send('ok'));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor escuchando en ${PORT}`));
