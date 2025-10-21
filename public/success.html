@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pago confirmado | SkillsCert</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:24px;background:#fafafa;color:#222}
+    .card{max-width:640px;margin:32px auto;background:#fff;border:1px solid #eee;border-radius:12px;padding:24px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+    h1{font-size:22px;margin:0 0 8px}
+    p{margin:8px 0}
+    input,button{font-size:16px;padding:10px 12px;border-radius:8px;border:1px solid #ddd}
+    button{background:#0f62fe;color:#fff;border-color:#0f62fe;cursor:pointer}
+    button:disabled{opacity:.6;cursor:default}
+    .row{display:flex;gap:8px;margin-top:12px}
+    .ok{color:#12a150;font-weight:600}
+    .muted{color:#666}
+    .msg{margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Pago confirmado</h1>
+    <p class="muted">Tu operación fue exitosa. En breve recibirás un correo con tu <strong>código de acceso</strong> y la fecha de vigencia.</p>
+    <p class="muted">Si no ves el correo, revisa “Spam” o “Promociones”.</p>
+
+    <hr style="margin:16px 0;border:none;border-top:1px solid #eee" />
+
+    <p>Acceso inmediato con tu correo y código:</p>
+    <div class="row">
+      <input id="email" type="email" placeholder="tu@correo.com" style="flex:1" />
+      <input id="code" type="text" placeholder="Código de acceso" style="flex:1" />
+    </div>
+    <div class="row">
+      <button id="btnLogin">Entrar a la app</button>
+      <button id="btnCopy">Copiar URL</button>
+    </div>
+    <div id="msg" class="msg"></div>
+
+    <p class="muted" style="margin-top:16px">ID de sesión: <code id="sid">—</code></p>
+  </div>
+
+  <script>
+    // 1) Leer session_id de la URL (para referencia/soporte)
+    const qp = new URLSearchParams(location.search);
+    const sessionId = qp.get('session_id') || '';
+    document.getElementById('sid').textContent = sessionId || 'N/D';
+
+    // 2) Botón copiar URL (útil para soporte)
+    document.getElementById('btnCopy').onclick = () => {
+      navigator.clipboard.writeText(location.href).then(() => {
+        ok('URL copiada al portapapeles.');
+      });
+    };
+
+    // 3) Login contra tu backend
+    const apiBase = location.origin; // mismo dominio (Render)
+    const btn = document.getElementById('btnLogin');
+    const msg = document.getElementById('msg');
+
+    function ok(t){ msg.innerHTML = '<span class="ok">'+t+'</span>'; }
+    function err(t){ msg.innerHTML = '<span style="color:#c01020;font-weight:600">'+t+'</span>'; }
+
+    document.getElementById('btnLogin').onclick = async () => {
+      const email = (document.getElementById('email').value || '').trim();
+      const code  = (document.getElementById('code').value  || '').trim();
+      if(!email || !code){ err('Ingresa tu correo y código.'); return; }
+
+      btn.disabled = true; msg.textContent = 'Validando...';
+      try{
+        const r = await fetch(apiBase + '/login-validar', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, code })
+        });
+        const j = await r.json();
+        if(r.ok && j.ok){
+          ok('Acceso concedido. Redirigiendo…');
+          // Redirige a tu app/dashboard
+          setTimeout(()=>{ window.location.href = '/app/index.html'; }, 700);
+        }else{
+          err(j.message || 'No fue posible validar el código.');
+        }
+      }catch(e){
+        err('Error de red. Intenta de nuevo.');
+      }finally{
+        btn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
