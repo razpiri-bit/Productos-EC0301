@@ -21,12 +21,12 @@
 <body>
   <div class="card">
     <h1>Pago confirmado</h1>
-    <p class="muted">Tu operación fue exitosa. En breve recibirás un correo con tu <strong>código de acceso</strong> y la fecha de vigencia.</p>
-    <p class="muted">Si no ves el correo, revisa “Spam” o “Promociones”.</p>
+    <p class="muted">Tu operación fue exitosa. En unos minutos te llegará un correo con tu <strong>código de acceso</strong> y su vigencia.</p>
+    <p class="muted">También puedes entrar ahora mismo con tu correo y código.</p>
 
     <hr style="margin:16px 0;border:none;border-top:1px solid #eee" />
 
-    <p>Acceso inmediato con tu correo y código:</p>
+    <p>Acceso inmediato:</p>
     <div class="row">
       <input id="email" type="email" placeholder="tu@correo.com" style="flex:1" />
       <input id="code" type="text" placeholder="Código de acceso" style="flex:1" />
@@ -41,30 +41,27 @@
   </div>
 
   <script>
-    // 1) Leer session_id de la URL (para referencia/soporte)
     const qp = new URLSearchParams(location.search);
     const sessionId = qp.get('session_id') || '';
     document.getElementById('sid').textContent = sessionId || 'N/D';
 
-    // 2) Botón copiar URL (útil para soporte)
     document.getElementById('btnCopy').onclick = () => {
       navigator.clipboard.writeText(location.href).then(() => {
-        ok('URL copiada al portapapeles.');
+        showOk('URL copiada al portapapeles.');
       });
     };
 
-    // 3) Login contra tu backend
-    const apiBase = location.origin; // mismo dominio (Render)
+    const apiBase = location.origin;
     const btn = document.getElementById('btnLogin');
     const msg = document.getElementById('msg');
 
-    function ok(t){ msg.innerHTML = '<span class="ok">'+t+'</span>'; }
-    function err(t){ msg.innerHTML = '<span style="color:#c01020;font-weight:600">'+t+'</span>'; }
+    function showOk(t){ msg.innerHTML = '<span class="ok">'+t+'</span>'; }
+    function showErr(t){ msg.innerHTML = '<span style="color:#c01020;font-weight:600">'+t+'</span>'; }
 
     document.getElementById('btnLogin').onclick = async () => {
       const email = (document.getElementById('email').value || '').trim();
       const code  = (document.getElementById('code').value  || '').trim();
-      if(!email || !code){ err('Ingresa tu correo y código.'); return; }
+      if(!email || !code){ showErr('Ingresa tu correo y código.'); return; }
 
       btn.disabled = true; msg.textContent = 'Validando...';
       try{
@@ -75,14 +72,14 @@
         });
         const j = await r.json();
         if(r.ok && j.ok){
-          ok('Acceso concedido. Redirigiendo…');
-          // Redirige a tu app/dashboard
+          showOk('Acceso concedido. Redirigiendo…');
+          // Cambia esta ruta por tu dashboard real
           setTimeout(()=>{ window.location.href = '/app/index.html'; }, 700);
         }else{
-          err(j.message || 'No fue posible validar el código.');
+          showErr(j.message || 'No fue posible validar el código.');
         }
       }catch(e){
-        err('Error de red. Intenta de nuevo.');
+        showErr('Error de red. Intenta de nuevo.');
       }finally{
         btn.disabled = false;
       }
