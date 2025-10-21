@@ -1,21 +1,22 @@
 // server.js
-// Express + CORS + Helmet + estáticos + Stripe Checkout + Login/Validación + Webhook montado correctamente
+// Express + CORS + Helmet + estáticos + Stripe Checkout + Login/Validación + Webhook RAW correcto
 
 require('dotenv').config();
+
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const mysql = require('mysql2/promise');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); // para /create-checkout-session
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 
-/* ========== 1) Webhook de Stripe (RAW) ========== */
-// Monta el router del webhook ANTES del JSON global.
-// Crea el archivo routes/stripeWebhook.js como se indica más abajo.
+/* ========== 1) Webhook de Stripe (RAW, ANTES del JSON) ========== */
+// Monta el router del webhook ANTES de app.use(express.json())
+// Asegúrate de tener routes/stripeWebhook.js usando express.raw + constructEvent.
 const stripeWebhook = require('./routes/stripeWebhook');
-app.use('/', stripeWebhook); // expone POST /stripe/webhook con express.raw adentro [web:159][web:327]
+app.use('/', stripeWebhook); // expone POST /stripe/webhook con cuerpo RAW [web:159]
 
 /* ========== 2) Middlewares globales (rutas normales) ========== */
 app.use(cors());
@@ -37,7 +38,7 @@ const pool = mysql.createPool({
 });
 
 /* ========== 5) Crear sesión de Checkout (botón de pago) ========== */
-// Ajusta success_url y cancel_url a tu dominio público.
+// success_url y cancel_url: ajusta a tu dominio público Render o personalizado.
 app.post('/create-checkout-session', async (req, res) => {
   try {
     const { nombre, email } = req.body || {};
@@ -47,22 +48,26 @@ app.post('/create-checkout-session', async (req, res) => {
       mode: 'payment',
       payment_method_types: ['card', 'oxxo'],
       payment_method_options: { oxxo: { expires_after_days: 2 } },
-      customer_email: email.toLowerCase(),
+      customer_email: email.toLowerCase(), // clave para que el webhook tenga session.customer_email [web:470][web:120]
       metadata: { nombre },
       line_items: [{
         price_data: {
           currency: 'mxn',
-          unit_amount: 99700,
-          product_data: { name: 'Acceso EC0301 (3 meses)', description: `Alumno: ${nombre}` }
+          unit_amount: 99700, // 997.00 MXN
+          product_data: {
+            name: 'Acceso EC0301 (3 meses)',
+            description: `Alumno: ${nombre}`
+          }
         },
         quantity: 1
       }],
       success_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/success.html?session_id={CHECKOUT_SESSION_ID}',
       cancel_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/cancel.html'
-    }); // [web:317][web:170]
+    }); // [web:470][web:430]
 
     return res.status(200).json({ url: session.url });
   } catch (err) {
+    console.error('Error create-checkout-session:', err);
     return res.status(500).json({ message: err.message });
   }
 });
@@ -85,9 +90,10 @@ app.post('/login-validar', async (req, res) => {
     if (new Date(row.expires_at) < new Date())
       return res.status(400).json({ ok: false, message: 'Código expirado' });
 
-    // Aquí puedes emitir cookie/JWT si lo necesitas. Por ahora, OK simple:
+    // Aquí podrías emitir cookie/JWT. Por ahora, OK simple:
     return res.status(200).json({ ok: true });
   } catch (err) {
+    console.error('Error login-validar:', err);
     return res.status(500).json({ ok: false, message: err.message });
   }
 });
