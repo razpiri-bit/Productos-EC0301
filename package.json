@@ -1,7 +1,7 @@
 {
   "name": "productos-ec0301-backend",
   "version": "1.0.0",
-  "description": "Backend para la app EC0301",
+  "description": "Backend EC0301: Stripe Checkout + Webhook + Códigos de acceso + Login",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
