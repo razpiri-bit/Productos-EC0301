@@ -1,89 +1,292 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pago confirmado | SkillsCert</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>¡Pago Exitoso! - SkillsCert</title>
   <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:24px;background:#fafafa;color:#222}
-    .card{max-width:640px;margin:32px auto;background:#fff;border:1px solid #eee;border-radius:12px;padding:24px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
-    h1{font-size:22px;margin:0 0 8px}
-    p{margin:8px 0}
-    input,button{font-size:16px;padding:10px 12px;border-radius:8px;border:1px solid #ddd}
-    button{background:#0f62fe;color:#fff;border-color:#0f62fe;cursor:pointer}
-    button:disabled{opacity:.6;cursor:default}
-    .row{display:flex;gap:8px;margin-top:12px}
-    .ok{color:#12a150;font-weight:600}
-    .muted{color:#666}
-    .msg{margin-top:8px}
+    :root {
+      --success: #10B981;
+      --primary: #1E3A8A;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .success-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 3rem 2.5rem;
+      text-align: center;
+    }
+    .success-icon {
+      width: 120px;
+      height: 120px;
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 2rem;
+      animation: scaleIn 0.5s ease-out;
+    }
+    .success-icon span {
+      font-size: 4rem;
+    }
+    @keyframes scaleIn {
+      from {
+        transform: scale(0);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+    h1 {
+      color: var(--primary);
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    .subtitle {
+      color: #6B7280;
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+    }
+    .info-box {
+      background: #F9FAFB;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+      text-align: left;
+    }
+    .info-box h3 {
+      color: var(--primary);
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+    .info-item {
+      display: flex;
+      align-items: start;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #E5E7EB;
+    }
+    .info-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .info-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .info-content {
+      flex: 1;
+    }
+    .info-title {
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 0.25rem;
+    }
+    .info-desc {
+      font-size: 0.9rem;
+      color: #6B7280;
+    }
+    .btn-primary {
+      display: inline-block;
+      padding: 1rem 2.5rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: all 0.3s;
+      margin-top: 1.5rem;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+    .session-info {
+      background: #FEF3C7;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: #92400E;
+    }
+    .loading {
+      text-align: center;
+      color: #6B7280;
+      padding: 2rem;
+    }
+    .spinner {
+      display: inline-block;
+      width: 2rem;
+      height: 2rem;
+      border: 3px solid rgba(0,0,0,0.1);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Pago confirmado</h1>
-    <p class="muted">Tu operación fue exitosa. En unos minutos te llegará un correo con tu <strong>código de acceso</strong> y su vigencia.</p>
-    <p class="muted">También puedes entrar ahora mismo con tu correo y código.</p>
-
-    <hr style="margin:16px 0;border:none;border-top:1px solid #eee" />
-
-    <p>Acceso inmediato:</p>
-    <div class="row">
-      <input id="email" type="email" placeholder="tu@correo.com" style="flex:1" />
-      <input id="code" type="text" placeholder="Código de acceso" style="flex:1" />
+  <div class="success-card">
+    <div id="content" class="loading">
+      <div class="spinner"></div>
+      <p style="margin-top: 1rem;">Verificando tu pago...</p>
     </div>
-    <div class="row">
-      <button id="btnLogin">Entrar a la app</button>
-      <button id="btnCopy">Copiar URL</button>
-    </div>
-    <div id="msg" class="msg"></div>
-
-    <p class="muted" style="margin-top:16px">ID de sesión: <code id="sid">—</code></p>
   </div>
 
   <script>
-    const qp = new URLSearchParams(location.search);
-    const sessionId = qp.get('session_id') || '';
-    document.getElementById('sid').textContent = sessionId || 'N/D';
+    async function verificarPago() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionId = urlParams.get('session_id');
 
-    document.getElementById('btnCopy').onclick = () => {
-      navigator.clipboard.writeText(location.href).then(() => {
-        showOk('URL copiada al portapapeles.');
-      });
-    };
-
-    const apiBase = location.origin;
-    const btn = document.getElementById('btnLogin');
-    const msg = document.getElementById('msg');
-
-    function showOk(t){ msg.innerHTML = '<span class="ok">'+t+'</span>'; }
-    function showErr(t){ msg.innerHTML = '<span style="color:#c01020;font-weight:600">'+t+'</span>'; }
-
-    document.getElementById('btnLogin').onclick = async () => {
-      const email = (document.getElementById('email').value || '').trim();
-      const code  = (document.getElementById('code').value  || '').trim();
-      if(!email || !code){ showErr('Ingresa tu correo y código.'); return; }
-
-      btn.disabled = true; msg.textContent = 'Validando...';
-      try{
-        const r = await fetch(apiBase + '/login-validar', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email, code })
-        });
-        const j = await r.json();
-        if(r.ok && j.ok){
-          showOk('Acceso concedido. Redirigiendo…');
-          // Cambia esta ruta por tu dashboard real
-          setTimeout(()=>{ window.location.href = '/app/index.html'; }, 700);
-        }else{
-          showErr(j.message || 'No fue posible validar el código.');
-        }
-      }catch(e){
-        showErr('Error de red. Intenta de nuevo.');
-      }finally{
-        btn.disabled = false;
+      if (!sessionId) {
+        mostrarError();
+        return;
       }
-    };
+
+      try {
+        const response = await fetch(`/api/checkout-session?session_id=${sessionId}`);
+        const session = await response.json();
+
+        if (session.payment_status === 'paid') {
+          mostrarExito(session);
+        } else {
+          mostrarError();
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        mostrarError();
+      }
+    }
+
+    function mostrarExito(session) {
+      const deliveryMethod = session.metadata?.delivery_method || 'email';
+      const email = session.customer_details?.email || session.metadata?.email;
+      const telefono = session.customer_details?.phone || session.metadata?.telefono;
+      
+      let deliveryText = '';
+      if (deliveryMethod === 'email') {
+        deliveryText = `📧 <strong>Por Email</strong><br>${email}`;
+      } else if (deliveryMethod === 'whatsapp') {
+        deliveryText = `📱 <strong>Por WhatsApp</strong><br>${telefono}`;
+      } else {
+        deliveryText = `📧 <strong>Email:</strong> ${email}<br>📱 <strong>WhatsApp:</strong> ${telefono}`;
+      }
+
+      document.getElementById('content').innerHTML = `
+        <div class="success-icon">
+          <span>✓</span>
+        </div>
+        
+        <h1>¡Pago Exitoso!</h1>
+        <p class="subtitle">Tu código de acceso está en camino</p>
+
+        <div class="info-box">
+          <h3>📬 Recibirás tu código por:</h3>
+          <p style="text-align: center; font-size: 1.1rem; color: var(--primary); margin: 1rem 0;">
+            ${deliveryText}
+          </p>
+        </div>
+
+        <div class="info-box">
+          <h3>🚀 Próximos Pasos</h3>
+          
+          <div class="info-item">
+            <span class="info-icon">📨</span>
+            <div class="info-content">
+              <div class="info-title">1. Revisa tu ${deliveryMethod === 'email' ? 'email' : deliveryMethod === 'whatsapp' ? 'WhatsApp' : 'email y WhatsApp'}</div>
+              <div class="info-desc">Deberías recibir tu código en los próximos minutos</div>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <span class="info-icon">🔐</span>
+            <div class="info-content">
+              <div class="info-title">2. Guarda tu código</div>
+              <div class="info-desc">Es personal e intransferible. Válido por 365 días</div>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <span class="info-icon">🎓</span>
+            <div class="info-content">
+              <div class="info-title">3. Ingresa a la plataforma</div>
+              <div class="info-desc">Usa tu email y código para acceder</div>
+            </div>
+          </div>
+        </div>
+
+        <a href="/login.html" class="btn-primary">
+          🚀 Ingresar a la Plataforma
+        </a>
+
+        <div class="session-info">
+          <strong>📋 Información de tu compra:</strong><br>
+          Número de sesión: ${session.id}<br>
+          Monto: $${(session.amount_total / 100).toFixed(2)} ${session.currency.toUpperCase()}
+        </div>
+
+        <p style="margin-top: 2rem; color: #6B7280; font-size: 0.9rem;">
+          ¿No recibiste tu código?<br>
+          Revisa tu carpeta de spam o contacta a 
+          <a href="mailto:info@skillscert.com.mx" style="color: var(--primary);">info@skillscert.com.mx</a>
+        </p>
+      `;
+    }
+
+    function mostrarError() {
+      document.getElementById('content').innerHTML = `
+        <div class="success-icon" style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);">
+          <span>✕</span>
+        </div>
+        
+        <h1 style="color: #DC2626;">Algo salió mal</h1>
+        <p class="subtitle">No pudimos verificar tu pago</p>
+
+        <div class="info-box">
+          <p style="color: #6B7280;">
+            Si realizaste el pago y llegaste a esta página, es posible que:<br>
+            • El pago aún está procesándose<br>
+            • Hubo un error temporal<br>
+            • La sesión expiró
+          </p>
+        </div>
+
+        <p style="margin-top: 1.5rem;">
+          <a href="/checkout.html" class="btn-primary" style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);">
+            Intentar de Nuevo
+          </a>
+        </p>
+
+        <p style="margin-top: 2rem; color: #6B7280; font-size: 0.9rem;">
+          ¿Necesitas ayuda?<br>
+          Contacta a <a href="mailto:info@skillscert.com.mx" style="color: var(--primary);">info@skillscert.com.mx</a>
+        </p>
+      `;
+    }
+
+    // Verificar pago al cargar la página
+    verificarPago();
   </script>
 </body>
 </html>
