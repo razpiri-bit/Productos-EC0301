@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Checkout - SkillsCert EC0301</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    :root {
+      --primary: #1E3A8A;
+      --accent: #667eea;
+      --success: #10B981;
+      --border: #E5E7EB;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #1E3A8A 0%, #667eea 100%);
+      color: white;
+      padding: 2rem;
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    .content {
+      padding: 2rem;
+    }
+    .product-info {
+      background: #F9FAFB;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+    }
+    .price {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--primary);
+      text-align: center;
+      margin: 1rem 0;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .delivery-options {
+      background: #F9FAFB;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+    }
+    .delivery-options h3 {
+      color: var(--primary);
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+    .option {
+      background: white;
+      border: 2px solid var(--border);
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .option:hover {
+      border-color: var(--accent);
+      transform: translateX(5px);
+    }
+    .option.selected {
+      border-color: var(--accent);
+      background: #EEF2FF;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+    .option input[type="radio"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+    .option-content {
+      flex: 1;
+    }
+    .option-title {
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 0.25rem;
+    }
+    .option-desc {
+      font-size: 0.85rem;
+      color: #6B7280;
+    }
+    .phone-group {
+      display: none;
+      margin-top: 1rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 8px;
+    }
+    .phone-group.visible {
+      display: block;
+    }
+    .features {
+      list-style: none;
+      margin: 1.5rem 0;
+    }
+    .features li {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .features li:last-child {
+      border-bottom: none;
+    }
+    .btn-checkout {
+      width: 100%;
+      padding: 1.25rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 1.5rem;
+    }
+    .btn-checkout:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+    .btn-checkout:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .security-badge {
+      text-align: center;
+      color: #6B7280;
+      font-size: 0.85rem;
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .alert {
+      background: #FEF3C7;
+      border-left: 4px solid #F59E0B;
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎓 Generador EC0301 Pro</h1>
+      <p>Completa tu compra y recibe acceso inmediato</p>
+    </div>
+
+    <div class="content">
+      <div class="product-info">
+        <h2 style="color: var(--primary); text-align: center; margin-bottom: 1rem;">
+          Acceso Completo por 1 Año
+        </h2>
+        <div class="price">$799 MXN</div>
+        
+        <ul class="features">
+          <li>
+            <span style="color: var(--success); font-size: 1.3rem;">✓</span>
+            <span>Generador automático de Carta Descriptiva</span>
+          </li>
+          <li>
+            <span style="color: var(--success); font-size: 1.3rem;">✓</span>
+            <span>Plan de evaluación personalizado</span>
+          </li>
+          <li>
+            <span style="color: var(--success); font-size: 1.3rem;">✓</span>
+            <span>Instrumentos de evaluación profesionales</span>
+          </li>
+          <li>
+            <span style="color: var(--success); font-size: 1.3rem;">✓</span>
+            <span>Descarga en Word y PDF</span>
+          </li>
+          <li>
+            <span style="color: var(--success); font-size: 1.3rem;">✓</span>
+            <span>Código de acceso válido por 365 días</span>
+          </li>
+        </ul>
+      </div>
+
+      <form id="checkoutForm">
+        <div class="form-group">
+          <label for="nombre">Nombre Completo *</label>
+          <input 
+            type="text" 
+            id="nombre" 
+            name="nombre" 
+            placeholder="Juan Pérez"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email *</label>
+          <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            placeholder="tu@email.com"
+            required
+          />
+        </div>
+
+        <div class="delivery-options">
+          <h3>📬 ¿Cómo quieres recibir tu código?</h3>
+          
+          <div class="option" onclick="selectDelivery('email')">
+            <input type="radio" name="delivery" value="email" id="opt-email" checked />
+            <div class="option-content">
+              <div class="option-title">📧 Solo por Email</div>
+              <div class="option-desc">Recibirás el código en tu correo electrónico</div>
+            </div>
+          </div>
+
+          <div class="option" onclick="selectDelivery('whatsapp')">
+            <input type="radio" name="delivery" value="whatsapp" id="opt-whatsapp" />
+            <div class="option-content">
+              <div class="option-title">📱 Solo por WhatsApp</div>
+              <div class="option-desc">Recibirás el código por mensaje de WhatsApp</div>
+            </div>
+          </div>
+
+          <div class="option" onclick="selectDelivery('both')">
+            <input type="radio" name="delivery" value="both" id="opt-both" />
+            <div class="option-content">
+              <div class="option-title">🚀 Email + WhatsApp</div>
+              <div class="option-desc">Recibe por ambos medios (recomendado)</div>
+            </div>
+          </div>
+
+          <div class="phone-group" id="phoneGroup">
+            <label for="telefono">Teléfono WhatsApp *</label>
+            <input 
+              type="tel" 
+              id="telefono" 
+              name="telefono" 
+              placeholder="5512345678"
+              pattern="[0-9]{10}"
+            />
+            <small style="color: #6B7280; display: block; margin-top: 0.5rem;">
+              Ingresa 10 dígitos sin espacios ni guiones
+            </small>
+          </div>
+        </div>
+
+        <div class="alert">
+          <strong>⚠️ Importante:</strong> Verifica que tu email y teléfono sean correctos. 
+          Por ahí recibirás tu código de acceso inmediatamente después del pago.
+        </div>
+
+        <button type="submit" class="btn-checkout" id="checkoutBtn">
+          🔒 Proceder al Pago Seguro
+        </button>
+
+        <div class="security-badge">
+          <span>🔒</span>
+          <span>Pago seguro procesado por Stripe</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Inicializar Stripe
+    const stripe = Stripe('TU_STRIPE_PUBLIC_KEY'); // ⚠️ Reemplazar con tu clave pública
+
+    // Manejar selección de método de entrega
+    function selectDelivery(method) {
+      // Actualizar selección visual
+      document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+      event.currentTarget.classList.add('selected');
+      
+      // Marcar radio button
+      document.getElementById(`opt-${method}`).checked = true;
+      
+      // Mostrar/ocultar campo de teléfono
+      const phoneGroup = document.getElementById('phoneGroup');
+      const phoneInput = document.getElementById('telefono');
+      
+      if (method === 'whatsapp' || method === 'both') {
+        phoneGroup.classList.add('visible');
+        phoneInput.required = true;
+      } else {
+        phoneGroup.classList.remove('visible');
+        phoneInput.required = false;
+      }
+    }
+
+    // Manejar submit del formulario
+    document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const btn = document.getElementById('checkoutBtn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ Procesando...';
+      btn.disabled = true;
+
+      try {
+        // Obtener valores del formulario
+        const nombre = document.getElementById('nombre').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const telefono = document.getElementById('telefono').value.trim();
+        const deliveryMethod = document.querySelector('input[name="delivery"]:checked').value;
+
+        // Validar teléfono si es necesario
+        if ((deliveryMethod === 'whatsapp' || deliveryMethod === 'both') && !telefono) {
+          throw new Error('Por favor ingresa tu número de WhatsApp');
+        }
+
+        // Crear sesión de checkout en Stripe
+        const response = await fetch('/api/create-checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            nombre: nombre,
+            email: email,
+            telefono: telefono,
+            deliveryMethod: deliveryMethod
+          })
+        });
+
+        const { sessionId } = await response.json();
+
+        // Redirigir a Stripe Checkout
+        const result = await stripe.redirectToCheckout({ sessionId });
+
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    });
+
+    // Marcar opción inicial como seleccionada
+    document.querySelector('.option').classList.add('selected');
+  </script>
+</body>
+</html>
