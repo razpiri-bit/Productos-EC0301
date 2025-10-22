@@ -1,106 +1,171 @@
-// server.js
-// Express + CORS + Helmet + estáticos + Stripe Checkout + Login/Validación + Webhook RAW correcto
+// ============================================
+// SERVER.JS - Servidor Principal con Checkout
+// ============================================
 
 require('dotenv').config();
-
-const path = require('path');
 const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const mysql = require('mysql2/promise');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const path = require('path');
+const Stripe = require('stripe');
 
 const app = express();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-/* ========== 1) Webhook de Stripe (RAW, ANTES del JSON) ========== */
-// Monta el router del webhook ANTES de app.use(express.json())
-// Asegúrate de tener routes/stripeWebhook.js usando express.raw + constructEvent.
-const stripeWebhook = require('./routes/stripeWebhook');
-app.use('/', stripeWebhook); // expone POST /stripe/webhook con cuerpo RAW [web:159]
+// Middleware
+app.use(express.json());
+app.use(express.static('public')); // Carpeta con tus archivos HTML
 
-/* ========== 2) Middlewares globales (rutas normales) ========== */
-app.use(cors());
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
-app.use(express.json()); // seguro aplicar después del webhook
-
-/* ========== 3) Estáticos y raíz ========== */
-app.use(express.static(path.join(__dirname, 'public')));
-app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-
-/* ========== 4) Pool MySQL para rutas normales ========== */
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10
-});
-
-/* ========== 5) Crear sesión de Checkout (botón de pago) ========== */
-// success_url y cancel_url: ajusta a tu dominio público Render o personalizado.
-app.post('/create-checkout-session', async (req, res) => {
+// ============================================
+// ENDPOINT: Crear Sesión de Checkout
+// ============================================
+app.post('/api/create-checkout', async (req, res) => {
   try {
-    const { nombre, email } = req.body || {};
-    if (!nombre || !email) return res.status(400).json({ message: 'Datos inválidos' });
+    const { nombre, email, telefono, deliveryMethod } = req.body;
 
+    // Validaciones
+    if (!nombre || !email) {
+      return res.status(400).json({ error: 'Nombre y email son obligatorios' });
+    }
+
+    if ((deliveryMethod === 'whatsapp' || deliveryMethod === 'both') && !telefono) {
+      return res.status(400).json({ error: 'Teléfono es obligatorio para WhatsApp' });
+    }
+
+    // Crear sesión de Stripe Checkout
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card', 'oxxo'],
-      payment_method_options: { oxxo: { expires_after_days: 2 } },
-      customer_email: email.toLowerCase(), // clave para que el webhook tenga session.customer_email [web:470][web:120]
-      metadata: { nombre },
-      line_items: [{
-        price_data: {
-          currency: 'mxn',
-          unit_amount: 99700, // 997.00 MXN
-          product_data: {
-            name: 'Acceso EC0301 (3 meses)',
-            description: `Alumno: ${nombre}`
-          }
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'mxn',
+            product_data: {
+              name: 'Generador EC0301 Pro - Acceso Anual',
+              description: 'Acceso completo por 1 año a generador de documentos EC0301',
+              images: ['https://tu-dominio.com/logo.png'], // Opcional
+            },
+            unit_amount: 79900, // $799 MXN en centavos
+          },
+          quantity: 1,
         },
-        quantity: 1
-      }],
-      success_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/success.html?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/cancel.html'
-    }); // [web:470][web:430]
+      ],
+      mode: 'payment',
+      customer_email: email,
+      phone_number_collection: {
+        enabled: deliveryMethod !== 'email'
+      },
+      metadata: {
+        nombre: nombre,
+        email: email,
+        telefono: telefono || '',
+        delivery_method: deliveryMethod // 'email', 'whatsapp', 'both'
+      },
+      success_url: `${process.env.DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.DOMAIN}/checkout.html?canceled=true`,
+    });
 
-    return res.status(200).json({ url: session.url });
-  } catch (err) {
-    console.error('Error create-checkout-session:', err);
-    return res.status(500).json({ message: err.message });
+    console.log('✅ Sesión creada:', session.id);
+    console.log('📧 Email:', email);
+    console.log('📱 Teléfono:', telefono);
+    console.log('📬 Método:', deliveryMethod);
+
+    res.json({ sessionId: session.id });
+  } catch (error) {
+    console.error('❌ Error creando checkout:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-/* ========== 6) Validar código para abrir la app ========== */
-app.post('/login-validar', async (req, res) => {
+// ============================================
+// ENDPOINT: Validar Código de Acceso
+// ============================================
+app.post('/api/validate-code', async (req, res) => {
   try {
-    const { email, code } = req.body || {};
-    if (!email || !code) return res.status(400).json({ ok: false, message: 'Datos requeridos' });
+    const { email, accessCode } = req.body;
 
-    const sql = `SELECT email, status, expires_at FROM access_codes WHERE code = ? LIMIT 1`;
-    const [rows] = await pool.execute(sql, [code]);
-    const row = rows && rows[0];
+    if (!email || !accessCode) {
+      return res.status(400).json({ error: 'Email y código son requeridos' });
+    }
 
-    if (!row) return res.status(400).json({ ok: false, message: 'Código inválido' });
-    if (row.email.toLowerCase() !== email.toLowerCase())
-      return res.status(400).json({ ok: false, message: 'No corresponde al correo' });
-    if (row.status !== 'active')
-      return res.status(400).json({ ok: false, message: `Código ${row.status}` });
-    if (new Date(row.expires_at) < new Date())
-      return res.status(400).json({ ok: false, message: 'Código expirado' });
+    // TODO: Buscar en tu base de datos
+    // Ejemplo simulado:
+    const codigoValido = accessCode === 'ZX5SN9Q_DXER'; // Para pruebas
+    const usuario = {
+      email: email,
+      nombre: 'Usuario Demo',
+      activo: true
+    };
 
-    // Aquí podrías emitir cookie/JWT. Por ahora, OK simple:
-    return res.status(200).json({ ok: true });
-  } catch (err) {
-    console.error('Error login-validar:', err);
-    return res.status(500).json({ ok: false, message: err.message });
+    if (codigoValido) {
+      // Generar token de sesión (opcional)
+      const token = Buffer.from(`${email}:${accessCode}`).toString('base64');
+      
+      res.json({
+        success: true,
+        token: token,
+        nombre: usuario.nombre
+      });
+    } else {
+      res.status(401).json({
+        success: false,
+        message: 'Código inválido o expirado'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error validando código:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-/* ========== 7) Healthcheck ========== */
-app.get('/health', (_req, res) => res.status(200).send('ok'));
+// ============================================
+// ENDPOINT: Página de Éxito
+// ============================================
+app.get('/api/checkout-session', async (req, res) => {
+  const { session_id } = req.query;
+  
+  try {
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    res.json(session);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-/* ========== 8) Arranque ========== */
+// ============================================
+// RUTAS ESTÁTICAS
+// ============================================
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/checkout', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'checkout.html'));
+});
+
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// ============================================
+// MANEJO DE ERRORES
+// ============================================
+app.use((err, req, res, next) => {
+  console.error('Error global:', err);
+  res.status(500).json({ error: 'Error interno del servidor' });
+});
+
+// ============================================
+// INICIAR SERVIDOR
+// ============================================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor escuchando en ${PORT}`));
+
+app.listen(PORT, () => {
+  console.log(`\n🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`📍 URL: http://localhost:${PORT}`);
+  console.log(`💳 Stripe: ${process.env.STRIPE_SECRET_KEY ? '✅' : '❌'}`);
+  console.log('\n📋 Endpoints disponibles:');
+  console.log('   POST /api/create-checkout');
+  console.log('   POST /api/validate-code');
+  console.log('   GET  /api/checkout-session');
+  console.log('   POST /webhook (en archivo separado)\n');
+});
+
+module.exports = app;
