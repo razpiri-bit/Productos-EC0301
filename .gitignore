@@ -1,32 +1,58 @@
-# Archivos del sistema operativo
-.DS_Store
-Thumbs.db
+# ============================================
+# .gitignore - SkillsCert EC0301
+# ============================================
 
-# Archivos de configuración local que podrían contener secretos
+# Variables de entorno (NUNCA subir a Git)
 .env
-*.env
-.env.*
+.env.local
+.env.production
+.env.test
 
-# Registros (Logs)
-logs
-*.log
+# Node modules
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-# Carpetas de dependencias (si en el futuro usas Node.js)
-node_modules
-dist
-build
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Archivos de caché
-.npm
-.yarn-cache
-.pnpm-store
-
-# Archivos de editores de código
-.idea
+# IDEs y editores
 .vscode/
+.idea/
 *.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Temporal
+tmp/
+temp/
+*.tmp
+
+# Bases de datos locales
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos de respaldo
+*.bak
+*.backup
+
+# Certificados y llaves
+*.pem
+*.key
+*.cert
+
+# Build
+dist/
+build/
+
+# Testing
+coverage/
+.nyc_output/
