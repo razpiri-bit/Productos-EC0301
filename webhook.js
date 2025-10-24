@@ -22,12 +22,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // CORS
 app.use(cors());
 
-// Middlewares
-app.use(express.static('public'));
-app.use('/api', express.json());
-
-// Webhook de Stripe necesita body RAW
+// Webhook de Stripe necesita body RAW (ANTES de express.json)
 app.use('/webhook', express.raw({type: 'application/json'}));
+
+// Middlewares generales
+app.use(express.json()); // Para todas las rutas
+app.use(express.static('public'));
 
 // Meta WhatsApp Cloud API
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
