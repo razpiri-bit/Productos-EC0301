@@ -328,7 +328,7 @@ _SkillsCert - Tu aliado en certificación profesional_`;
 // CREAR CHECKOUT SESSION
 // ============================================
 
-// Endpoint principal
+// Endpoint principal con /api/create-checkout
 app.post('/api/create-checkout', async (req, res) => {
   try {
     const { email, nombre, telefono, deliveryMethod } = req.body;
@@ -389,7 +389,7 @@ app.post('/api/create-checkout', async (req, res) => {
   }
 });
 
-// Endpoint alternativo (compatibilidad)
+// Endpoint alternativo (compatibilidad) con /create-checkout-session
 app.post('/create-checkout-session', async (req, res) => {
   try {
     const { email, nombre, telefono, deliveryMethod } = req.body;
