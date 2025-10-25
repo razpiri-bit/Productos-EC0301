@@ -119,174 +119,99 @@
       transform: translateY(-2px);
       box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
     }
-    .session-info {
-      background: #FEF3C7;
+    .alert-success {
+      background: #D1FAE5;
+      border-left: 4px solid #10B981;
       padding: 1rem;
       border-radius: 8px;
-      margin-top: 2rem;
-      font-size: 0.85rem;
-      color: #92400E;
-    }
-    .loading {
-      text-align: center;
-      color: #6B7280;
-      padding: 2rem;
-    }
-    .spinner {
-      display: inline-block;
-      width: 2rem;
-      height: 2rem;
-      border: 3px solid rgba(0,0,0,0.1);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+      margin: 1.5rem 0;
+      color: #065F46;
+      font-size: 0.9rem;
+      text-align: left;
     }
   </style>
 </head>
 <body>
   <div class="success-card">
-    <div id="content" class="loading">
-      <div class="spinner"></div>
-      <p style="margin-top: 1rem;">Verificando tu pago...</p>
+    <div class="success-icon">
+      <span>✓</span>
     </div>
-  </div>
+    
+    <h1>¡Pago Exitoso!</h1>
+    <p class="subtitle">Tu compra se ha procesado correctamente</p>
 
-  <script>
-    async function verificarPago() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const sessionId = urlParams.get('session_id');
+    <div class="alert-success">
+      <strong>🎉 ¡Felicidades!</strong><br>
+      Tu código de acceso ha sido generado y enviado automáticamente.
+    </div>
 
-      if (!sessionId) {
-        mostrarError();
-        return;
-      }
+    <div class="info-box">
+      <h3>📬 Revisa tu bandeja de entrada</h3>
+      <p style="color: #6B7280; margin-bottom: 1rem;">
+        Dependiendo del método que elegiste, recibirás tu código por:
+      </p>
+      <ul style="list-style: none; padding: 0;">
+        <li style="padding: 0.5rem 0; color: #1E3A8A;">
+          <strong>📧 Email</strong> - Revisa tu correo (y carpeta de spam)
+        </li>
+        <li style="padding: 0.5rem 0; color: #1E3A8A;">
+          <strong>📱 WhatsApp</strong> - Revisa tus mensajes
+        </li>
+      </ul>
+    </div>
 
-      try {
-        const response = await fetch(`/api/checkout-session?session_id=${sessionId}`);
-        const session = await response.json();
-
-        if (session.payment_status === 'paid') {
-          mostrarExito(session);
-        } else {
-          mostrarError();
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        mostrarError();
-      }
-    }
-
-    function mostrarExito(session) {
-      const deliveryMethod = session.metadata?.delivery_method || 'email';
-      const email = session.customer_details?.email || session.metadata?.email;
-      const telefono = session.customer_details?.phone || session.metadata?.telefono;
+    <div class="info-box">
+      <h3>🚀 Próximos Pasos</h3>
       
-      let deliveryText = '';
-      if (deliveryMethod === 'email') {
-        deliveryText = `📧 <strong>Por Email</strong><br>${email}`;
-      } else if (deliveryMethod === 'whatsapp') {
-        deliveryText = `📱 <strong>Por WhatsApp</strong><br>${telefono}`;
-      } else {
-        deliveryText = `📧 <strong>Email:</strong> ${email}<br>📱 <strong>WhatsApp:</strong> ${telefono}`;
-      }
-
-      document.getElementById('content').innerHTML = `
-        <div class="success-icon">
-          <span>✓</span>
+      <div class="info-item">
+        <span class="info-icon">1️⃣</span>
+        <div class="info-content">
+          <div class="info-title">Busca el código</div>
+          <div class="info-desc">Revisa tu email o WhatsApp. El código tiene formato: XXXX-XXXX-XX</div>
         </div>
-        
-        <h1>¡Pago Exitoso!</h1>
-        <p class="subtitle">Tu código de acceso está en camino</p>
+      </div>
 
-        <div class="info-box">
-          <h3>📬 Recibirás tu código por:</h3>
-          <p style="text-align: center; font-size: 1.1rem; color: var(--primary); margin: 1rem 0;">
-            ${deliveryText}
-          </p>
+      <div class="info-item">
+        <span class="info-icon">2️⃣</span>
+        <div class="info-content">
+          <div class="info-title">Guarda tu código</div>
+          <div class="info-desc">Es personal, intransferible y válido por 365 días</div>
         </div>
+      </div>
 
-        <div class="info-box">
-          <h3>🚀 Próximos Pasos</h3>
-          
-          <div class="info-item">
-            <span class="info-icon">📨</span>
-            <div class="info-content">
-              <div class="info-title">1. Revisa tu ${deliveryMethod === 'email' ? 'email' : deliveryMethod === 'whatsapp' ? 'WhatsApp' : 'email y WhatsApp'}</div>
-              <div class="info-desc">Deberías recibir tu código en los próximos minutos</div>
-            </div>
-          </div>
-
-          <div class="info-item">
-            <span class="info-icon">🔐</span>
-            <div class="info-content">
-              <div class="info-title">2. Guarda tu código</div>
-              <div class="info-desc">Es personal e intransferible. Válido por 365 días</div>
-            </div>
-          </div>
-
-          <div class="info-item">
-            <span class="info-icon">🎓</span>
-            <div class="info-content">
-              <div class="info-title">3. Ingresa a la plataforma</div>
-              <div class="info-desc">Usa tu email y código para acceder</div>
-            </div>
-          </div>
+      <div class="info-item">
+        <span class="info-icon">3️⃣</span>
+        <div class="info-content">
+          <div class="info-title">Ingresa a la plataforma</div>
+          <div class="info-desc">Usa tu email y código para empezar a generar documentos</div>
         </div>
+      </div>
+    </div>
 
-        <a href="/login.html" class="btn-primary">
-          🚀 Ingresar a la Plataforma
-        </a>
+    <a href="/login.html" class="btn-primary">
+      🚀 Ingresar a la Plataforma
+    </a>
 
-        <div class="session-info">
-          <strong>📋 Información de tu compra:</strong><br>
-          Número de sesión: ${session.id}<br>
-          Monto: $${(session.amount_total / 100).toFixed(2)} ${session.currency.toUpperCase()}
-        </div>
-
-        <p style="margin-top: 2rem; color: #6B7280; font-size: 0.9rem;">
-          ¿No recibiste tu código?<br>
-          Revisa tu carpeta de spam o contacta a 
+    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #E5E7EB;">
+      <p style="color: #6B7280; font-size: 0.9rem; margin-bottom: 1rem;">
+        <strong>⏱️ ¿No recibiste tu código?</strong>
+      </p>
+      <ul style="list-style: none; padding: 0; color: #6B7280; font-size: 0.85rem; text-align: left;">
+        <li style="padding: 0.3rem 0;">• Espera 2-3 minutos (el sistema está procesando)</li>
+        <li style="padding: 0.3rem 0;">• Revisa tu carpeta de SPAM o correo no deseado</li>
+        <li style="padding: 0.3rem 0;">• Verifica que el email/teléfono sean correctos</li>
+        <li style="padding: 0.3rem 0;">• Contacta a soporte: 
           <a href="mailto:info@skillscert.com.mx" style="color: var(--primary);">info@skillscert.com.mx</a>
-        </p>
-      `;
-    }
+        </li>
+      </ul>
+    </div>
 
-    function mostrarError() {
-      document.getElementById('content').innerHTML = `
-        <div class="success-icon" style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);">
-          <span>✕</span>
-        </div>
-        
-        <h1 style="color: #DC2626;">Algo salió mal</h1>
-        <p class="subtitle">No pudimos verificar tu pago</p>
-
-        <div class="info-box">
-          <p style="color: #6B7280;">
-            Si realizaste el pago y llegaste a esta página, es posible que:<br>
-            • El pago aún está procesándose<br>
-            • Hubo un error temporal<br>
-            • La sesión expiró
-          </p>
-        </div>
-
-        <p style="margin-top: 1.5rem;">
-          <a href="/checkout.html" class="btn-primary" style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);">
-            Intentar de Nuevo
-          </a>
-        </p>
-
-        <p style="margin-top: 2rem; color: #6B7280; font-size: 0.9rem;">
-          ¿Necesitas ayuda?<br>
-          Contacta a <a href="mailto:info@skillscert.com.mx" style="color: var(--primary);">info@skillscert.com.mx</a>
-        </p>
-      `;
-    }
-
-    // Verificar pago al cargar la página
-    verificarPago();
-  </script>
+    <p style="margin-top: 2rem; color: #6B7280; font-size: 0.85rem;">
+      📱 WhatsApp Soporte: 
+      <a href="https://wa.me/525538822334" style="color: var(--primary);" target="_blank">
+        +52 55 3882 2334
+      </a>
+    </p>
+  </div>
 </body>
 </html>
