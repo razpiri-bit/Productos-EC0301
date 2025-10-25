@@ -203,7 +203,7 @@
         <h2 style="color: var(--primary); text-align: center; margin-bottom: 1rem;">
           Acceso Completo por 1 Año
         </h2>
-        <div class="price">$799 MXN</div>
+        <div class="price">$999 MXN</div>
         
         <ul class="features">
           <li>
@@ -312,8 +312,12 @@
   </div>
 
   <script>
-    // Inicializar Stripe
-    const stripe = Stripe('TU_STRIPE_PUBLIC_KEY'); // ⚠️ Reemplazar con tu clave pública
+    // ============================================
+    // ⚠️ IMPORTANTE: REEMPLAZA CON TU CLAVE PÚBLICA DE STRIPE
+    // Obtén tu clave en: https://dashboard.stripe.com/test/apikeys
+    // Busca "Publishable key" que empieza con pk_test_xxx...
+    // ============================================
+    const stripe = Stripe('pk_test_REEMPLAZA_CON_TU_CLAVE_PUBLICA');
 
     // Manejar selección de método de entrega
     function selectDelivery(method) {
@@ -359,6 +363,7 @@
         }
 
         // Crear sesión de checkout en Stripe
+        // NOTA: Usamos /api/create-checkout que devuelve sessionId
         const response = await fetch('/api/create-checkout', {
           method: 'POST',
           headers: {
@@ -371,6 +376,11 @@
             deliveryMethod: deliveryMethod
           })
         });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Error al crear la sesión de pago');
+        }
 
         const { sessionId } = await response.json();
 
