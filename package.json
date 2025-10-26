@@ -1,12 +1,12 @@
 {
   "name": "skillscert-ec0301-webhook",
   "version": "2.0.0",
-  "description": "Webhook completo para SkillsCert EC0301 con Stripe, MySQL, Email y WhatsApp",
+  "description": "Webhook completo para SkillsCert EC0301 con Stripe, MySQL, Email (Gmail/Postmark) y WhatsApp Cloud API",
   "main": "webhook.js",
   "scripts": {
     "start": "node webhook.js",
     "dev": "nodemon webhook.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"No test specified\" && exit 0"
   },
   "keywords": [
     "webhook",
@@ -19,25 +19,25 @@
     "nodejs",
     "express"
   ],
-  "author": "SkillsCert",
+  "author": "SkillsCert Team",
   "license": "ISC",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   },
   "dependencies": {
-    "axios": "^1.6.2",
+    "axios": "^1.7.4",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "mysql2": "^3.6.5",
-    "nanoid": "^3.3.7",
-    "nodemailer": "^6.9.7",
-    "postmark": "^4.0.0",
-    "stripe": "^14.10.0"
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mysql2": "^3.9.4",
+    "nanoid": "^5.0.7",
+    "nodemailer": "^6.9.13",
+    "postmark": "^4.0.4",
+    "stripe": "^14.22.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.1.4"
   },
   "repository": {
     "type": "git",
