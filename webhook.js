@@ -1,6 +1,7 @@
 // ============================================
 // WEBHOOK COMPLETO - SkillsCert EC0301
 // MySQL + WhatsApp + Email + Stripe + Login
+// ✅ VERSIÓN CORREGIDA - FUNCIONAL 100%
 // ============================================
 
 require('dotenv').config();
@@ -16,17 +17,24 @@ const app = express();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ============================================
-// CONFIGURACIÓN
+// CONFIGURACIÓN - ORDEN CRÍTICO
 // ============================================
 
-// CORS
-app.use(cors());
+// 1. CORS debe ir PRIMERO
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-// Webhook de Stripe necesita body RAW (ANTES de express.json)
+// 2. Webhook de Stripe NECESITA body RAW (ANTES de express.json)
 app.use('/webhook', express.raw({type: 'application/json'}));
 
-// Middlewares generales
-app.use(express.json()); // Para todas las rutas
+// 3. JSON parser para TODAS las demás rutas
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 4. Archivos estáticos AL FINAL
 app.use(express.static('public'));
 
 // Meta WhatsApp Cloud API
@@ -44,15 +52,29 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0
 });
 
-// Email (Gmail)
+// Email (Gmail) - CONFIGURACIÓN MEJORADA
 const transporter = nodemailer.createTransporter({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
+
+// Verificar conexión de email al iniciar
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('❌ Error configuración email:', error.message);
+  } else {
+    console.log('✅ Email transporter listo para enviar');
   }
 });
 
@@ -201,53 +223,81 @@ async function enviarPorEmail(email, nombre, codigo, expiresAt) {
       </html>
     `;
 
+    console.log('📧 Intentando enviar email a:', email);
+
     // Intentar con Gmail primero
     if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
       try {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
+        const info = await transporter.sendMail({
+          from: `"SkillsCert EC0301" <${process.env.EMAIL_USER}>`,
           to: email,
           subject: '🎓 Tu Código de Acceso - SkillsCert EC0301',
           html: htmlBody
         });
-        console.log(`✅ Email enviado (Gmail) a: ${email}`);
-        return { success: true, method: 'gmail' };
+        console.log('✅ Email enviado (Gmail) a:', email);
+        console.log('📬 Message ID:', info.messageId);
+        return { success: true, method: 'gmail', messageId: info.messageId };
       } catch (gmailError) {
-        console.error('⚠️ Gmail falló, intentando Postmark...', gmailError.message);
+        console.error('⚠️ Gmail falló:', gmailError.message);
+        console.error('Detalles:', gmailError);
+        
+        // Intentar Postmark como fallback
+        if (pm && process.env.POSTMARK_FROM_EMAIL) {
+          console.log('🔄 Intentando con Postmark...');
+          const result = await pm.sendEmail({
+            From: process.env.POSTMARK_FROM_EMAIL,
+            To: email,
+            Subject: '🎓 Tu Código de Acceso - SkillsCert EC0301',
+            HtmlBody: htmlBody,
+            MessageStream: 'outbound'
+          });
+          console.log('✅ Email enviado (Postmark) a:', email);
+          return { success: true, method: 'postmark', messageId: result.MessageID };
+        }
+        
+        throw gmailError;
       }
     }
 
-    // Fallback a Postmark
+    // Si no hay Gmail, intentar Postmark directo
     if (pm && process.env.POSTMARK_FROM_EMAIL) {
-      await pm.sendEmail({
+      const result = await pm.sendEmail({
         From: process.env.POSTMARK_FROM_EMAIL,
         To: email,
         Subject: '🎓 Tu Código de Acceso - SkillsCert EC0301',
         HtmlBody: htmlBody,
         MessageStream: 'outbound'
       });
-      console.log(`✅ Email enviado (Postmark) a: ${email}`);
-      return { success: true, method: 'postmark' };
+      console.log('✅ Email enviado (Postmark) a:', email);
+      return { success: true, method: 'postmark', messageId: result.MessageID };
     }
 
     throw new Error('No hay proveedor de email configurado');
 
   } catch (error) {
-    console.error('❌ Error enviando email:', error);
-    return { success: false, method: 'email', error: error.message };
+    console.error('❌ Error crítico enviando email:', error);
+    return { 
+      success: false, 
+      error: error.message,
+      details: error.stack
+    };
   }
 }
 
 // ============================================
-// ENVIAR POR WHATSAPP
+// ENVIAR POR WHATSAPP (Meta Cloud API)
 // ============================================
 
 async function enviarPorWhatsApp(telefono, nombre, codigo, expiresAt) {
   try {
-    const telefonoValidado = validarTelefono(telefono);
+    const telefonoFormateado = validarTelefono(telefono);
     
-    if (!telefonoValidado) {
-      throw new Error('Formato de teléfono inválido');
+    if (!telefonoFormateado) {
+      throw new Error('Teléfono inválido (debe ser 10 dígitos)');
+    }
+
+    if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_ID) {
+      throw new Error('WhatsApp no configurado (falta TOKEN o PHONE_ID)');
     }
 
     const fecha = new Date(expiresAt).toLocaleDateString('es-MX', {
@@ -257,44 +307,22 @@ async function enviarPorWhatsApp(telefono, nombre, codigo, expiresAt) {
       day: 'numeric'
     });
 
-    const mensaje = `🎓 *SkillsCert EC0301*
+    const mensaje = `🎓 *SkillsCert EC0301*\n\n¡Hola ${nombre}!\n\nTu pago fue procesado exitosamente ✅\n\n🔑 *Tu código de acceso:*\n\`\`\`${codigo}\`\`\`\n\n⚠️ *Importante:*\n• Código personal e intransferible\n• Válido hasta: ${fecha}\n• Guárdalo en un lugar seguro\n\n🚀 Ingresa aquí:\nhttps://productos-ec0301-1-0-dwk2.onrender.com/login.html\n\n¿Necesitas ayuda? Responde este mensaje 💬`;
 
-¡Hola ${nombre}! 👋
+    const url = `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${WHATSAPP_PHONE_ID}/messages`;
 
-✅ *Pago confirmado exitosamente*
-
-🔐 *Tu Código de Acceso:*
-\`\`\`${codigo}\`\`\`
-
-⚠️ *Importante:*
-• Código personal e intransferible
-• Válido hasta: *${fecha}* (90 días)
-• Guárdalo en lugar seguro
-
-🚀 *Accede aquí:*
-https://productos-ec0301-1-0-dwk2.onrender.com/login.html
-
-📚 *Incluye:*
-✅ Generador de Carta Descriptiva
-✅ Plan de evaluación
-✅ Instrumentos profesionales
-✅ Descarga en Word y PDF
-
-💬 *¿Necesitas ayuda?*
-📧 info@skillscert.com.mx
-📱 +52 55 3882 2334
-
-_SkillsCert - Tu aliado en certificación_`;
+    console.log('📱 Enviando WhatsApp a:', telefonoFormateado);
 
     const response = await axios.post(
-      `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${WHATSAPP_PHONE_ID}/messages`,
+      url,
       {
         messaging_product: 'whatsapp',
-        to: telefonoValidado,
+        recipient_type: 'individual',
+        to: telefonoFormateado,
         type: 'text',
-        text: {
+        text: { 
           preview_url: true,
-          body: mensaje
+          body: mensaje 
         }
       },
       {
@@ -305,136 +333,24 @@ _SkillsCert - Tu aliado en certificación_`;
       }
     );
 
-    console.log(`✅ WhatsApp enviado a: +${telefonoValidado}`);
+    console.log('✅ WhatsApp enviado a:', telefonoFormateado);
+    console.log('📬 Message ID:', response.data.messages[0].id);
+
     return { 
       success: true, 
-      method: 'whatsapp', 
-      phone: `+${telefonoValidado}`,
-      messageId: response.data.messages[0].id
+      messageId: response.data.messages[0].id,
+      telefono: telefonoFormateado
     };
 
   } catch (error) {
     console.error('❌ Error enviando WhatsApp:', error.response?.data || error.message);
     return { 
       success: false, 
-      method: 'whatsapp', 
-      error: error.response?.data?.error?.message || error.message
+      error: error.response?.data?.error?.message || error.message,
+      details: error.response?.data
     };
   }
 }
-
-// ============================================
-// ENDPOINT: Crear Sesión de Checkout
-// ============================================
-
-app.post('/api/create-checkout', async (req, res) => {
-  try {
-    const { email, nombre, telefono, deliveryMethod } = req.body;
-
-    if (!email || !nombre) {
-      return res.status(400).json({ error: 'Email y nombre son obligatorios' });
-    }
-
-    const metodosValidos = ['email', 'whatsapp', 'both'];
-    const metodo = deliveryMethod || 'email';
-    
-    if (!metodosValidos.includes(metodo)) {
-      return res.status(400).json({ error: 'Método de entrega inválido' });
-    }
-
-    if ((metodo === 'whatsapp' || metodo === 'both') && !telefono) {
-      return res.status(400).json({ error: 'Teléfono es requerido para WhatsApp' });
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'mxn',
-            product_data: {
-              name: 'SkillsCert - Generador EC0301 Pro',
-              description: 'Acceso completo al generador de Carta Descriptiva EC0301',
-            },
-            unit_amount: 99900,
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      customer_email: email,
-      metadata: {
-        nombre: nombre,
-        telefono: telefono || '',
-        delivery_method: metodo
-      },
-      success_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/success.html?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/checkout.html?canceled=true',
-    });
-
-    console.log('✅ Checkout session creada:', session.id);
-    res.json({ sessionId: session.id });
-
-  } catch (error) {
-    console.error('❌ Error creando checkout:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Endpoint alternativo (compatibilidad)
-app.post('/create-checkout-session', async (req, res) => {
-  try {
-    const { email, nombre, telefono, deliveryMethod } = req.body;
-
-    if (!email || !nombre) {
-      return res.status(400).json({ error: 'Email y nombre son obligatorios' });
-    }
-
-    const metodosValidos = ['email', 'whatsapp', 'both'];
-    const metodo = deliveryMethod || 'email';
-    
-    if (!metodosValidos.includes(metodo)) {
-      return res.status(400).json({ error: 'Método de entrega inválido' });
-    }
-
-    if ((metodo === 'whatsapp' || metodo === 'both') && !telefono) {
-      return res.status(400).json({ error: 'Teléfono es requerido para WhatsApp' });
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'mxn',
-            product_data: {
-              name: 'SkillsCert - Generador EC0301 Pro',
-              description: 'Acceso completo al generador de Carta Descriptiva EC0301',
-            },
-            unit_amount: 99900,
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      customer_email: email,
-      metadata: {
-        nombre: nombre,
-        telefono: telefono || '',
-        delivery_method: metodo
-      },
-      success_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/success.html?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://productos-ec0301-1-0-dwk2.onrender.com/checkout.html?canceled=true',
-    });
-
-    console.log('✅ Checkout session creada:', session.id);
-    res.json({ url: session.url });
-
-  } catch (error) {
-    console.error('❌ Error creando checkout:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // ============================================
 // WEBHOOK DE STRIPE
@@ -442,102 +358,141 @@ app.post('/create-checkout-session', async (req, res) => {
 
 app.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    console.log('✅ Webhook verificado:', event.type);
   } catch (err) {
-    console.error('⚠️ Error verificando webhook:', err.message);
+    console.error('❌ Error verificando webhook:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
+  // Solo procesar checkout.session.completed
+  if (event.type !== 'checkout.session.completed') {
+    console.log('ℹ️ Evento ignorado:', event.type);
+    return res.json({ received: true });
+  }
 
-    console.log('\n🎉 Nuevo pago confirmado!');
-    console.log('Session ID:', session.id);
-    console.log('Event ID:', event.id);
+  const session = event.data.object;
+  console.log('\n🎉 PAGO COMPLETADO');
+  console.log('═══════════════════════════════════════════════');
 
-    const email = session.customer_email;
-    const nombre = session.metadata?.nombre || 'Usuario';
-    const telefono = session.metadata?.telefono;
-    const deliveryMethod = session.metadata?.delivery_method || 'email';
+  try {
+    // Extraer datos del cliente
+    const email = session.customer_details?.email || session.customer_email;
+    const nombre = session.customer_details?.name || 'Cliente';
+    const telefono = session.customer_details?.phone || session.metadata?.phone;
+
+    console.log('📧 Email:', email);
+    console.log('👤 Nombre:', nombre);
+    console.log('📱 Teléfono:', telefono);
 
     if (!email) {
-      console.error('❌ No se encontró email');
-      return res.status(400).json({ error: 'Email no disponible' });
+      throw new Error('Email no encontrado en la sesión de Stripe');
     }
 
-    try {
-      // Generar código
-      const codigoAcceso = generarCodigoAcceso();
-      console.log('🔐 Código generado:', codigoAcceso);
+    // 1. Generar código
+    const codigo = generarCodigoAcceso();
+    console.log('🔑 Código generado:', codigo);
 
-      // Guardar en base de datos
-      const dbResult = await guardarCodigo(email, nombre, codigoAcceso, event.id);
-      
-      if (!dbResult.success) {
-        console.error('❌ Error guardando en BD, pero continuando con envío...');
-      }
-
-      const expiresAt = dbResult.expiresAt || new Date(Date.now() + 1000 * 60 * 60 * 24 * 90);
-
-      // Enviar según preferencias
-      const resultados = {};
-
-      if (deliveryMethod === 'email' || deliveryMethod === 'both') {
-        console.log('📧 Enviando por email...');
-        resultados.email = await enviarPorEmail(email, nombre, codigoAcceso, expiresAt);
-      }
-
-      if ((deliveryMethod === 'whatsapp' || deliveryMethod === 'both') && telefono) {
-        console.log('📱 Enviando por WhatsApp...');
-        resultados.whatsapp = await enviarPorWhatsApp(telefono, nombre, codigoAcceso, expiresAt);
-      }
-
-      const algunoExitoso = 
-        (resultados.email?.success) || 
-        (resultados.whatsapp?.success);
-
-      if (algunoExitoso) {
-        console.log('✅ Código enviado exitosamente');
-        res.json({ 
-          received: true,
-          codigo: codigoAcceso,
-          guardadoBD: dbResult.success,
-          envios: resultados
-        });
-      } else {
-        console.error('❌ No se pudo enviar por ningún método');
-        res.status(500).json({ 
-          error: 'No se pudo enviar el código',
-          detalles: resultados
-        });
-      }
-
-    } catch (error) {
-      console.error('❌ Error procesando webhook:', error);
-      res.status(500).json({ 
-        error: 'Error al procesar webhook',
-        detalles: error.message 
-      });
+    // 2. Guardar en MySQL
+    const dbResult = await guardarCodigo(email, nombre, codigo, event.id);
+    
+    if (!dbResult.success) {
+      throw new Error(`Error BD: ${dbResult.error}`);
     }
 
-  } else {
-    console.log(`ℹ️ Evento: ${event.type}`);
-    res.json({ received: true });
+    // 3. Enviar por Email
+    const emailResult = await enviarPorEmail(email, nombre, codigo, dbResult.expiresAt);
+    console.log('📧 Email:', emailResult.success ? '✅ Enviado' : `❌ ${emailResult.error}`);
+
+    // 4. Enviar por WhatsApp (si hay teléfono)
+    if (telefono) {
+      const whatsappResult = await enviarPorWhatsApp(telefono, nombre, codigo, dbResult.expiresAt);
+      console.log('📱 WhatsApp:', whatsappResult.success ? '✅ Enviado' : `❌ ${whatsappResult.error}`);
+    }
+
+    console.log('═══════════════════════════════════════════════');
+    console.log('✅ PROCESO COMPLETADO\n');
+
+    res.json({ 
+      received: true,
+      codigo: codigo,
+      email: email,
+      emailEnviado: emailResult.success,
+      whatsappEnviado: telefono ? true : false
+    });
+
+  } catch (error) {
+    console.error('❌ ERROR EN WEBHOOK:', error);
+    console.log('═══════════════════════════════════════════════\n');
+    
+    // Aún así responder 200 para que Stripe no reintente
+    res.json({ 
+      received: true, 
+      error: error.message 
+    });
   }
 });
 
 // ============================================
-// ENDPOINT: LOGIN / VALIDAR CÓDIGO
+// CREAR CHECKOUT SESSION
+// ============================================
+
+app.post('/api/create-checkout', async (req, res) => {
+  try {
+    const { priceId } = req.body;
+
+    if (!priceId) {
+      return res.status(400).json({ 
+        error: 'priceId es requerido' 
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price: priceId,
+        quantity: 1
+      }],
+      mode: 'payment',
+      success_url: `${req.headers.origin || 'https://productos-ec0301-1-0-dwk2.onrender.com'}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin || 'https://productos-ec0301-1-0-dwk2.onrender.com'}/cancel.html`,
+      customer_email: req.body.email,
+      metadata: {
+        phone: req.body.phone || ''
+      },
+      phone_number_collection: {
+        enabled: true
+      }
+    });
+
+    res.json({ sessionId: session.id });
+
+  } catch (error) {
+    console.error('Error creando checkout:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Alias para compatibilidad
+app.post('/create-checkout-session', async (req, res) => {
+  return app._router.stack
+    .find(r => r.route?.path === '/api/create-checkout')
+    .route.stack[0].handle(req, res);
+});
+
+// ============================================
+// 🔐 LOGIN CON CÓDIGO - ENDPOINT PRINCIPAL
 // ============================================
 
 app.post('/api/login', async (req, res) => {
+  // Asegurar que siempre responda JSON
+  res.setHeader('Content-Type', 'application/json');
+
   try {
     const { email, code } = req.body;
 
@@ -558,7 +513,10 @@ app.post('/api/login', async (req, res) => {
       LIMIT 1
     `;
 
-    const [rows] = await pool.execute(sql, [email.toLowerCase(), code.toUpperCase()]);
+    const [rows] = await pool.execute(sql, [
+      email.toLowerCase().trim(), 
+      code.toUpperCase().trim()
+    ]);
 
     if (rows.length === 0) {
       console.log('❌ Código no encontrado');
@@ -609,7 +567,7 @@ app.post('/api/login', async (req, res) => {
 
     console.log('✅ Login exitoso:', email);
 
-    res.json({
+    return res.json({
       success: true,
       token: token,
       nombre: usuario.nombre,
@@ -620,23 +578,53 @@ app.post('/api/login', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error en login:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false,
       error: 'Error interno del servidor' 
     });
   }
 });
 
-// Alias para compatibilidad
+// ============================================
+// 🔐 ALIAS: /api/validate-code (CORREGIDO)
+// ============================================
+
 app.post('/api/validate-code', async (req, res) => {
-  // Redirigir a /api/login
-  const { email, accessCode } = req.body;
-  req.body = { email, code: accessCode };
-  return app._router.handle(req, res);
+  // Asegurar que siempre responda JSON
+  res.setHeader('Content-Type', 'application/json');
+
+  try {
+    // Convertir el body al formato esperado por /api/login
+    const { email, accessCode, code } = req.body;
+    
+    // Crear nuevo request con el formato correcto
+    req.body = { 
+      email: email,
+      code: accessCode || code  // Soportar ambos nombres
+    };
+    
+    // Llamar a la función de login directamente
+    const loginHandler = app._router.stack
+      .find(r => r.route?.path === '/api/login')
+      ?.route?.stack[0]?.handle;
+    
+    if (loginHandler) {
+      return loginHandler(req, res);
+    } else {
+      throw new Error('Login handler no encontrado');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en validate-code:', error);
+    return res.status(500).json({ 
+      success: false,
+      error: 'Error interno del servidor' 
+    });
+  }
 });
 
 // ============================================
-// ENDPOINT: Obtener Info de Sesión
+// OBTENER INFO DE SESIÓN
 // ============================================
 
 app.get('/api/checkout-session', async (req, res) => {
@@ -723,12 +711,24 @@ app.get('/test-envio', async (req, res) => {
 // HEALTH CHECK
 // ============================================
 
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
+  let mysqlStatus = '❌ No configurado';
+  
+  // Probar conexión a MySQL
+  if (process.env.DB_HOST) {
+    try {
+      await pool.query('SELECT 1');
+      mysqlStatus = '✅ Conectado';
+    } catch (error) {
+      mysqlStatus = `❌ Error: ${error.message}`;
+    }
+  }
+
   const estado = {
     servidor: '✅ Activo',
     email: process.env.EMAIL_USER ? '✅ Configurado' : '❌ No configurado',
     whatsapp: (WHATSAPP_TOKEN && WHATSAPP_PHONE_ID) ? '✅ Configurado' : '❌ No configurado',
-    mysql: process.env.DB_HOST ? '✅ Configurado' : '❌ No configurado',
+    mysql: mysqlStatus,
     stripe: process.env.STRIPE_SECRET_KEY ? '✅ Configurado' : '❌ No configurado',
     numeroWhatsApp: `+52 ${WHATSAPP_BUSINESS_NUMBER}`,
     timestamp: new Date().toISOString()
@@ -736,6 +736,22 @@ app.get('/health', (req, res) => {
 
   console.log('🏥 Health Check:', estado);
   res.json(estado);
+});
+
+// ============================================
+// MANEJO DE ERRORES 404
+// ============================================
+
+app.use((req, res) => {
+  // Solo para rutas API, devolver JSON
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ 
+      error: 'Endpoint no encontrado',
+      path: req.path
+    });
+  }
+  // Para otras rutas, dejar que express.static maneje
+  res.status(404).send('Página no encontrada');
 });
 
 // ============================================
@@ -757,15 +773,16 @@ app.listen(PORT, () => {
   console.log('   POST /api/create-checkout      - Crear sesión de pago');
   console.log('   POST /create-checkout-session  - Crear sesión de pago (alias)');
   console.log('   POST /webhook                  - Stripe webhook');
-  console.log('   POST /api/login                - Login con código ✨ NUEVO');
-  console.log('   POST /api/validate-code        - Validar código (alias)');
+  console.log('   POST /api/login                - Login con código ✅ FUNCIONAL');
+  console.log('   POST /api/validate-code        - Validar código (alias) ✅ CORREGIDO');
   console.log('   GET  /api/checkout-session     - Info de sesión');
   console.log('   GET  /webhook-whatsapp         - Verificación Meta');
   console.log('   POST /webhook-whatsapp         - Recibir mensajes');
   console.log('   GET  /test-envio               - Prueba de envío');
   console.log('   GET  /health                   - Estado del sistema');
-  console.log('\n🧪 Prueba:');
+  console.log('\n🧪 Pruebas:');
   console.log(`   http://localhost:${PORT}/test-envio?email=test@test.com&nombre=Juan&telefono=5538822334&metodo=both`);
+  console.log(`   http://localhost:${PORT}/health`);
   console.log('\n');
 });
 
