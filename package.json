@@ -1,39 +1,39 @@
 {
   "name": "skillscert-ec0301-webhook",
   "version": "2.0.0",
-  "description": "Sistema de webhook para SkillsCert EC0301 con Meta WhatsApp Cloud API + MySQL",
+  "description": "Webhook completo para SkillsCert EC0301 con Stripe, MySQL, Email y WhatsApp",
   "main": "webhook.js",
   "scripts": {
     "start": "node webhook.js",
     "dev": "nodemon webhook.js",
     "test": "node webhook.js"
   },
-  "keywords": [
-    "webhook",
-    "stripe",
-    "whatsapp",
-    "meta",
-    "ec0301",
-    "skillscert",
-    "mysql"
-  ],
-  "author": "SkillsCert",
-  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "express": "^4.18.2",
     "stripe": "^14.10.0",
     "nodemailer": "^6.9.7",
     "axios": "^1.6.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
     "mysql2": "^3.6.5",
     "nanoid": "^3.3.7",
-    "postmark": "^4.0.2"
+    "postmark": "^4.0.0",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
   },
-  "engines": {
-    "node": ">=18.0.0"
-  }
+  "keywords": [
+    "webhook",
+    "stripe",
+    "mysql",
+    "email",
+    "whatsapp",
+    "ec0301",
+    "skillscert"
+  ],
+  "author": "SkillsCert",
+  "license": "ISC"
 }
