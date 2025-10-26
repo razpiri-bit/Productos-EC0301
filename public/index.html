@@ -1,215 +1,366 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SkillsCert - Generador de Documentos EC0301</title>
-
-  <!-- UI libs -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkillsCert - Generador EC0301</title>
+  <script src="https://js.stripe.com/v3/"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
   <style>
-    :root{
-      --primary:#1E3A8A; --accent:#FF6B35; --success:#22C55E;
-      --light:#F8FAFC; --border:#E5E7EB; --text:#1F2937; --muted:#6B7280;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem 1rem;
     }
-    body{font-family:sans-serif;background:#F1F5F9;margin:0;color:var(--text)}
-    .container{max-width:1200px;margin:0 auto;padding:2rem 1rem}
-    .header{background:#fff;padding:1rem 0;box-shadow:0 2px 10px rgba(0,0,0,.05);border-bottom:3px solid var(--primary)}
-    .header-content{display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;padding:0 1rem}
-    .logo{font-size:1.75rem;font-weight:700;color:var(--primary)}
-    .main-content{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;margin-top:3rem}
-    @media (max-width:900px){.main-content{grid-template-columns:1fr}}
-    .hero-text h1{font-size:2.4rem;color:var(--primary);margin:0 0 .5rem}
-    .features-list{list-style:none;padding:0;margin:1rem 0}
-    .features-list li{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
-    .features-list i{color:var(--success)}
-    .registration-card{background:#fff;padding:2.5rem;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.1)}
-    .input-group{margin-bottom:1.25rem}
-    .input-group label{display:block;font-weight:600;margin-bottom:.5rem}
-    .input-group input{width:100%;padding:.875rem;border:2px solid var(--border);border-radius:10px;font-size:1rem}
-    .payment-options h3{text-align:center;color:var(--muted);margin:1rem 0}
-    .payment-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-    .btn{padding:.8rem 1.2rem;border:none;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;width:100%;height:100%}
-    .payment-btn{background:var(--light);border:2px solid var(--border);text-align:center}
-    .payment-btn i{font-size:1.5rem;margin-bottom:.5rem;display:block}
-    .footer{background:var(--primary);color:#fff;text-align:center;padding:2rem 1rem;margin-top:4rem}
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 3rem;
+    }
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .header p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 1.5rem;
+      border-radius: 15px;
+      color: white;
+    }
+    .feature-card h3 {
+      margin-bottom: 0.5rem;
+      font-size: 1.1rem;
+    }
+    .payment-section {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 2.5rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .payment-section h2 {
+      color: #1F2937;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .price-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 15px;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .price-box .price {
+      font-size: 3rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    .price-box .period {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: #1F2937;
+      margin-bottom: 0.5rem;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      border: 2px solid #E5E7EB;
+      border-radius: 10px;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .payment-methods {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .payment-btn {
+      padding: 1rem;
+      border: 2px solid #E5E7EB;
+      border-radius: 10px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+    .payment-btn:hover {
+      border-color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+    }
+    .payment-btn .icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .payment-btn .title {
+      font-weight: 600;
+      color: #1F2937;
+      margin-bottom: 0.25rem;
+    }
+    .payment-btn .subtitle {
+      font-size: 0.85rem;
+      color: #6B7280;
+    }
+    .help-text {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: #6B7280;
+      font-size: 0.9rem;
+    }
+    .help-text a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    @media (max-width: 640px) {
+      .payment-methods {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
-  <header class="header">
-    <div class="header-content"><div class="logo">SkillsCert</div></div>
-  </header>
+  <div class="container">
+    <div class="header">
+      <h1>🎓 SkillsCert</h1>
+      <p>Genera tus Documentos <strong>EC0301</strong> en minutos</p>
+    </div>
 
-  <main class="container">
-    <div class="main-content">
-      <div class="hero-text">
-        <h1>Genera tus Documentos <span style="color:var(--accent)">EC0301</span> en minutos</h1>
-        <ul class="features-list">
-          <li><i class="fa-solid fa-check-circle"></i> Asistente IA para objetivos.</li>
-          <li><i class="fa-solid fa-file-pdf"></i> Generación automática de formatos.</li>
-          <li><i class="fa-solid fa-cloud-arrow-down"></i> Exportación a PDF y Word.</li>
-          <li><i class="fa-solid fa-shield-halved"></i> 100% alineado al estándar.</li>
-        </ul>
-        <p><strong>Obtén 3 meses de acceso ilimitado.</strong></p>
+    <div class="features">
+      <div class="feature-card">
+        <h3>✅ Asistente IA para objetivos.</h3>
+        <p>Genera objetivos de aprendizaje automáticamente</p>
       </div>
-
-      <div class="registration-card">
-        <h2>Crea tu cuenta</h2>
-
-        <form id="registrationForm" novalidate>
-          <div class="input-group">
-            <label for="nombre">Nombre completo</label>
-            <input type="text" id="nombre" name="nombre" placeholder="Tu nombre completo" required/>
-          </div>
-
-          <div class="input-group">
-            <label for="email">Correo electrónico</label>
-            <input type="email" id="email" name="email" placeholder="donde recibirás tu acceso" autocomplete="email" required/>
-          </div>
-
-          <div class="input-group">
-            <label for="whatsapp">WhatsApp (12 dígitos)</label>
-            <input type="tel" id="whatsapp" name="whatsapp" inputmode="numeric" pattern="[0-9]{12}" placeholder="52XXXXXXXXXX" value="52" required/>
-          </div>
-
-          <div class="payment-options">
-            <h3>Elige tu método de pago</h3>
-            <div class="payment-grid">
-              <button type="button" class="payment-btn btn" id="stripe-button">
-                <i class="fa-solid fa-credit-card"></i>
-                Pagar con Tarjeta / OXXO <small>(Automático vía Stripe)</small>
-              </button>
-              <button type="button" class="payment-btn btn" id="transfer-button">
-                <i class="fa-solid fa-university"></i>
-                Pagar con Transferencia <small>(Verificación manual)</small>
-              </button>
-            </div>
-          </div>
-        </form>
-
-        <div style="text-align:center;margin-top:1rem">
-          <p><a href="/login.html">¿Ya tienes un código de acceso? Ingresa aquí</a></p>
-        </div>
+      <div class="feature-card">
+        <h3>📋 Generación automática de formatos.</h3>
+        <p>Carta descriptiva, plan de evaluación y más</p>
+      </div>
+      <div class="feature-card">
+        <h3>👥 Exportación a PDF y Word.</h3>
+        <p>Descarga tus documentos en el formato que prefieras</p>
+      </div>
+      <div class="feature-card">
+        <h3>🛡️ 100% alineado al estándar.</h3>
+        <p>Cumple con todos los requisitos EC0301</p>
       </div>
     </div>
-  </main>
 
-  <footer class="footer">
-    <p><strong>SkillsCert © 2025</strong></p>
-    <p><a href="mailto:info@skillscert.com.mx" style="color:white">info@skillscert.com.mx</a> | Cel: 55 3882 2334</p>
-  </footer>
+    <div class="payment-section">
+      <h2>Obtén 3 meses de acceso ilimitado</h2>
+
+      <div class="price-box">
+        <div class="price">$999 MXN</div>
+        <div class="period">Acceso por 90 días</div>
+      </div>
+
+      <form id="paymentForm">
+        <div class="form-group">
+          <label for="name">Nombre completo</label>
+          <input 
+            type="text" 
+            id="name" 
+            name="name" 
+            placeholder="ROBERTO AZPIRI GARCIA"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            placeholder="tu@email.com"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Teléfono (opcional)</label>
+          <input 
+            type="tel" 
+            id="phone" 
+            name="phone" 
+            placeholder="5538822334"
+          />
+        </div>
+
+        <h3 style="margin-bottom: 1rem; color: #1F2937;">Elige tu método de pago</h3>
+
+        <div class="payment-methods">
+          <button type="button" class="payment-btn" onclick="pagarConTarjeta()">
+            <div class="icon">💳</div>
+            <div class="title">Pagar con Tarjeta / OXXO</div>
+            <div class="subtitle">(Automático vía Stripe)</div>
+          </button>
+
+          <button type="button" class="payment-btn" onclick="pagarConTransferencia()">
+            <div class="icon">🏦</div>
+            <div class="title">Pagar con Transferencia</div>
+            <div class="subtitle">(Verificación manual)</div>
+          </button>
+        </div>
+      </form>
+
+      <div class="help-text">
+        <p>¿Ya tienes un código de acceso? <a href="/login.html">Ingresa aquí</a></p>
+      </div>
+    </div>
+  </div>
 
   <script>
-    // Utilidad: validación y normalización
-    class FormValidator {
-      constructor(formId){ this.form = document.getElementById(formId); }
-      validateForm(){
-        const required = this.form.querySelectorAll('[required]');
-        for(const field of required){
-          if(!field.checkValidity() || !field.value.trim()){
-            const label = (field.labels && field.labels[0]) ? field.labels[0].innerText : field.name;
-            Swal.fire({icon:'warning',title:'Campo incompleto',text:`Revisa: "${label}".`});
-            field.focus();
-            return false;
-          }
-        }
-        return true;
-      }
-      getUserData(){
-        const nombre = this.form.nombre.value.trim();
-        const email = this.form.email.value.trim().toLowerCase();
-        const whatsapp = this.form.whatsapp.value.replace(/\D/g,'');
-        return { nombre, email, whatsapp };
-      }
-    }
+    // ⚙️ CONFIGURACIÓN DE STRIPE
+    // ⚠️ IMPORTANTE: Reemplaza con tu STRIPE_PUBLISHABLE_KEY
+    const STRIPE_PUBLISHABLE_KEY = 'pk_test_51QJy6JBJM4WhUPGtzOk0H3ZdP4B4oKZZOwUDPWThtfKvMRvRKm2AJLxNQ56xhzaKrIIa6oN9OPLWBibqxVkA4z7w00gJ77nkz7';
+    
+    // ⚠️ IMPORTANTE: Reemplaza con tu PRICE_ID de Stripe
+    const STRIPE_PRICE_ID = 'price_1QJy7mBJM4WhUPGtf5oRjmCd'; // Tu Price ID real de MXN 999
+    
+    const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
 
-    class UIManager {
-      static showLoading(button, text='Procesando...'){
-        button.dataset.originalText = button.innerHTML;
-        button.innerHTML = `<span style="animation: spin 1s linear infinite;border:2px solid transparent;border-top-color:currentcolor;border-radius:50%;width:1rem;height:1rem;display:inline-block;margin-right:.5rem"></span>${text}`;
-        button.disabled = true;
-      }
-      static hideLoading(button){
-        if(button.dataset.originalText) button.innerHTML = button.dataset.originalText;
-        button.disabled = false;
-      }
-    }
+    // Función para validar formulario
+    function validarFormulario() {
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const stripeButton = document.getElementById('stripe-button');
-      const transferButton = document.getElementById('transfer-button');
-      const validator = new FormValidator('registrationForm');
-
-      // Opcional: fija la base si el backend está en otra URL
-      const BASE_URL = ''; // mismo origen. Si usas otro dominio, ponlo aquí, por ejemplo: 'https://tu-api.onrender.com'
-
-      // Pago Stripe (Tarjeta / OXXO)
-      stripeButton.addEventListener('click', async (e) => {
-        const btn = e.currentTarget;
-        if(!validator.validateForm()) return;
-
-        const userData = validator.getUserData();
-        UIManager.showLoading(btn, 'Redirigiendo a pago seguro...');
-
-        try {
-          const resp = await fetch(`${BASE_URL}/create-checkout-session`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(userData),
-            credentials: 'same-origin'
-          });
-
-          // Lee texto primero para poder diagnosticar
-          const raw = await resp.text();
-          let data = {};
-          try { data = raw ? JSON.parse(raw) : {}; } catch { /* cuerpo no-JSON */ }
-
-          if(resp.ok && data.url){
-            window.location.href = data.url;
-            return;
-          }
-
-          const msg = (data && data.message) ? data.message : (raw || 'No se pudo crear la sesión.');
-          throw new Error(msg);
-        } catch (err) {
-          Swal.fire({icon:'error',title:'Error de pago',text:String(err.message || err)});
-        } finally {
-          UIManager.hideLoading(btn);
-        }
-      });
-
-      // Transferencia SPEI
-      transferButton.addEventListener('click', () => {
-        if(!validator.validateForm()) return;
-
-        const { nombre, email } = validator.getUserData();
+      if (!name || !email) {
         Swal.fire({
-          icon: 'info',
-          title: 'Instrucciones para Transferencia (SPEI)',
-          html: `
-            <div style="text-align:left">
-              <p>Realiza la transferencia con los siguientes datos:</p>
-              <div style="background:#F1F5F9;padding:1rem;border-radius:8px;margin:1rem 0">
-                <p><strong>Banco:</strong> STP</p>
-                <p><strong>CLABE:</strong> 646180123456789012</p>
-                <p><strong>Beneficiario:</strong> SkillsCert S.A. de C.V.</p>
-                <p><strong>Concepto:</strong> Pago EC0301 ${nombre}</p>
-                <p><strong>Monto:</strong> $997.00 MXN</p>
-              </div>
-              <p><strong>Importante:</strong></p>
-              <ol>
-                <li>Envía tu comprobante a <strong>info@skillscert.com.mx</strong> o WhatsApp <strong>55 3882 2334</strong>.</li>
-                <li>Tras verificar (hasta 24 h hábiles), recibirás tu código de acceso en <strong>${email}</strong>.</li>
-              </ol>
-            </div>
-          `,
-          confirmButtonText: 'Entendido',
-          confirmButtonColor: '#1E3A8A'
+          icon: 'warning',
+          title: 'Campos incompletos',
+          text: 'Por favor completa tu nombre y email'
         });
+        return false;
+      }
+
+      if (!email.includes('@')) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Email inválido',
+          text: 'Por favor ingresa un email válido'
+        });
+        return false;
+      }
+
+      return true;
+    }
+
+    // Pagar con Tarjeta (Stripe)
+    async function pagarConTarjeta() {
+      if (!validarFormulario()) return;
+
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+
+      // Mostrar loading
+      Swal.fire({
+        title: 'Procesando...',
+        text: 'Redirigiendo a la página de pago',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
       });
-    });
+
+      try {
+        // ✅ CORRECCIÓN: Enviar priceId correctamente
+        const response = await fetch('/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            priceId: STRIPE_PRICE_ID,  // ✅ ESTO ES LO IMPORTANTE
+            email: email,
+            phone: phone
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Error al crear sesión de pago');
+        }
+
+        // Redirigir a Stripe Checkout
+        const result = await stripe.redirectToCheckout({
+          sessionId: data.sessionId
+        });
+
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
+
+      } catch (error) {
+        console.error('Error:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.message || 'No se pudo procesar el pago. Intenta de nuevo.',
+          footer: 'Si el problema persiste, contacta a info@skillscert.com.mx'
+        });
+      }
+    }
+
+    // Pagar con Transferencia
+    function pagarConTransferencia() {
+      if (!validarFormulario()) return;
+
+      Swal.fire({
+        icon: 'info',
+        title: 'Pago por Transferencia',
+        html: `
+          <div style="text-align: left; padding: 1rem;">
+            <h3 style="margin-bottom: 1rem;">📋 Datos bancarios:</h3>
+            <p><strong>Banco:</strong> BBVA</p>
+            <p><strong>Cuenta:</strong> 0123456789</p>
+            <p><strong>CLABE:</strong> 012345678901234567</p>
+            <p><strong>Beneficiario:</strong> SkillsCert México</p>
+            <p><strong>Monto:</strong> $999.00 MXN</p>
+            <hr style="margin: 1rem 0;">
+            <p style="color: #666; font-size: 0.9rem;">
+              ⚠️ Después de realizar tu transferencia, envía tu comprobante a 
+              <strong>info@skillscert.com.mx</strong> con tu email y recibirás 
+              tu código de acceso en 24 horas.
+            </p>
+          </div>
+        `,
+        confirmButtonText: 'Entendido',
+        width: '600px'
+      });
+    }
   </script>
 </body>
 </html>
