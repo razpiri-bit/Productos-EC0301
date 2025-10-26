@@ -1,6 +1,6 @@
 // ============================================
 // WEBHOOK COMPLETO - SkillsCert EC0301
-// MySQL + WhatsApp Cloud API + Email + Stripe
+// MySQL + WhatsApp + Email + Stripe + Login
 // ============================================
 
 require('dotenv').config();
@@ -48,7 +48,7 @@ const pool = mysql.createPool({
 });
 
 // Email (Gmail)
-const transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransporter({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
@@ -68,7 +68,7 @@ const pm = process.env.POSTMARK_SERVER_TOKEN
 
 // Generar código de acceso único
 function generarCodigoAcceso() {
-  return nanoid(10).toUpperCase();
+  return nanoid(12).replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 12);
 }
 
 // Validar y formatear teléfono mexicano
@@ -230,7 +230,7 @@ async function enviarPorEmail(email, nombre, codigo, expiresAt) {
       return { success: true, method: 'postmark' };
     }
 
-    throw new Error('No email service configured');
+    throw new Error('No hay proveedor de email configurado');
 
   } catch (error) {
     console.error('❌ Error enviando email:', error);
@@ -268,7 +268,7 @@ async function enviarPorWhatsApp(telefono, nombre, codigo, expiresAt) {
 
 ⚠️ *Importante:*
 • Código personal e intransferible
-• Válido hasta: ${fecha}
+• Válido hasta: *${fecha}* (90 días)
 • Guárdalo en lugar seguro
 
 🚀 *Accede aquí:*
@@ -279,13 +279,12 @@ https://productos-ec0301-1-0-dwk2.onrender.com/login.html
 ✅ Plan de evaluación
 ✅ Instrumentos profesionales
 ✅ Descarga en Word y PDF
-✅ Acceso durante 90 días
 
 💬 *¿Necesitas ayuda?*
 📧 info@skillscert.com.mx
 📱 +52 55 3882 2334
 
-_SkillsCert - Tu aliado en certificación profesional_`;
+_SkillsCert - Tu aliado en certificación_`;
 
     const response = await axios.post(
       `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${WHATSAPP_PHONE_ID}/messages`,
@@ -325,19 +324,12 @@ _SkillsCert - Tu aliado en certificación profesional_`;
 }
 
 // ============================================
-// CREAR CHECKOUT SESSION
+// ENDPOINT: Crear Sesión de Checkout
 // ============================================
 
-// Endpoint principal con /api/create-checkout
 app.post('/api/create-checkout', async (req, res) => {
   try {
     const { email, nombre, telefono, deliveryMethod } = req.body;
-
-    console.log('📦 Nueva solicitud de checkout:');
-    console.log('   Email:', email);
-    console.log('   Nombre:', nombre);
-    console.log('   Teléfono:', telefono);
-    console.log('   Método:', deliveryMethod);
 
     if (!email || !nombre) {
       return res.status(400).json({ error: 'Email y nombre son obligatorios' });
@@ -361,10 +353,10 @@ app.post('/api/create-checkout', async (req, res) => {
           price_data: {
             currency: 'mxn',
             product_data: {
-              name: 'SkillsCert - Generador EC0301',
+              name: 'SkillsCert - Generador EC0301 Pro',
               description: 'Acceso completo al generador de Carta Descriptiva EC0301',
             },
-            unit_amount: 99900, // $999 MXN
+            unit_amount: 99900,
           },
           quantity: 1,
         },
@@ -389,7 +381,7 @@ app.post('/api/create-checkout', async (req, res) => {
   }
 });
 
-// Endpoint alternativo (compatibilidad) con /create-checkout-session
+// Endpoint alternativo (compatibilidad)
 app.post('/create-checkout-session', async (req, res) => {
   try {
     const { email, nombre, telefono, deliveryMethod } = req.body;
@@ -416,7 +408,7 @@ app.post('/create-checkout-session', async (req, res) => {
           price_data: {
             currency: 'mxn',
             product_data: {
-              name: 'SkillsCert - Generador EC0301',
+              name: 'SkillsCert - Generador EC0301 Pro',
               description: 'Acceso completo al generador de Carta Descriptiva EC0301',
             },
             unit_amount: 99900,
@@ -542,6 +534,127 @@ app.post('/webhook', async (req, res) => {
 });
 
 // ============================================
+// ENDPOINT: LOGIN / VALIDAR CÓDIGO
+// ============================================
+
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    console.log('🔐 Intento de login:', { email, code });
+
+    if (!email || !code) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Email y código son requeridos' 
+      });
+    }
+
+    // Buscar en MySQL
+    const sql = `
+      SELECT id, email, nombre, code, expires_at, status, login_count
+      FROM access_codes
+      WHERE email = ? AND code = ?
+      LIMIT 1
+    `;
+
+    const [rows] = await pool.execute(sql, [email.toLowerCase(), code.toUpperCase()]);
+
+    if (rows.length === 0) {
+      console.log('❌ Código no encontrado');
+      return res.status(401).json({
+        success: false,
+        message: 'Código inválido o no encontrado'
+      });
+    }
+
+    const usuario = rows[0];
+
+    // Verificar estado
+    if (usuario.status !== 'active') {
+      console.log('❌ Código inactivo:', usuario.status);
+      return res.status(401).json({
+        success: false,
+        message: 'Código inactivo o revocado'
+      });
+    }
+
+    // Verificar expiración
+    const ahora = new Date();
+    const expira = new Date(usuario.expires_at);
+    
+    if (expira < ahora) {
+      console.log('❌ Código expirado');
+      
+      // Marcar como expirado en BD
+      await pool.execute(
+        'UPDATE access_codes SET status = "expired" WHERE id = ?',
+        [usuario.id]
+      );
+      
+      return res.status(401).json({
+        success: false,
+        message: 'Código expirado'
+      });
+    }
+
+    // Login exitoso - actualizar último acceso
+    await pool.execute(
+      'UPDATE access_codes SET last_login = NOW(), login_count = login_count + 1 WHERE id = ?',
+      [usuario.id]
+    );
+
+    // Generar token simple
+    const token = Buffer.from(`${email}:${code}:${Date.now()}`).toString('base64');
+
+    console.log('✅ Login exitoso:', email);
+
+    res.json({
+      success: true,
+      token: token,
+      nombre: usuario.nombre,
+      email: usuario.email,
+      expiresAt: usuario.expires_at,
+      loginCount: usuario.login_count + 1
+    });
+
+  } catch (error) {
+    console.error('❌ Error en login:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error interno del servidor' 
+    });
+  }
+});
+
+// Alias para compatibilidad
+app.post('/api/validate-code', async (req, res) => {
+  // Redirigir a /api/login
+  const { email, accessCode } = req.body;
+  req.body = { email, code: accessCode };
+  return app._router.handle(req, res);
+});
+
+// ============================================
+// ENDPOINT: Obtener Info de Sesión
+// ============================================
+
+app.get('/api/checkout-session', async (req, res) => {
+  const { session_id } = req.query;
+  
+  if (!session_id) {
+    return res.status(400).json({ error: 'session_id es requerido' });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    res.json(session);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // WEBHOOK WHATSAPP (Verificación)
 // ============================================
 
@@ -642,8 +755,11 @@ app.listen(PORT, () => {
   console.log('═══════════════════════════════════════════════');
   console.log('\n📋 Endpoints disponibles:');
   console.log('   POST /api/create-checkout      - Crear sesión de pago');
-  console.log('   POST /create-checkout-session  - Crear sesión de pago');
+  console.log('   POST /create-checkout-session  - Crear sesión de pago (alias)');
   console.log('   POST /webhook                  - Stripe webhook');
+  console.log('   POST /api/login                - Login con código ✨ NUEVO');
+  console.log('   POST /api/validate-code        - Validar código (alias)');
+  console.log('   GET  /api/checkout-session     - Info de sesión');
   console.log('   GET  /webhook-whatsapp         - Verificación Meta');
   console.log('   POST /webhook-whatsapp         - Recibir mensajes');
   console.log('   GET  /test-envio               - Prueba de envío');
