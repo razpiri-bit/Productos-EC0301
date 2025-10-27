@@ -1,25 +1,28 @@
 /**
- * SERVICIO DE STRIPE
+ * SERVICIO DE STRIPE MEJORADO
  * 
- * Gestión centralizada de pagos con Stripe
- * Características:
- * - Validación automática de price_id
- * - Manejo robusto de errores
- * - Caché de configuración de productos
- * - Logging completo de transacciones
- * - Webhooks seguros
+ * Soporta métodos de pago de notificación diferida:
+ * - OXXO (pago en efectivo)
+ * - Transferencias bancarias
+ * - Tarjetas (instantáneo)
  * 
- * @version 1.0.0
+ * IMPORTANTE: Para OXXO y transferencias, NO completar el pedido
+ * hasta recibir confirmación del pago vía webhook.
+ * 
+ * @version 2.0.0
  * @author Roberto Azpiri García
  * 
- * HISTORIAL DE VERSIONES:
- * v1.0.0 - 2025-10-26 - Implementación inicial con validación de price_id
+ * CAMBIOS v2.0.0:
+ * - Agregado soporte para OXXO
+ * - Agregado soporte para transferencias bancarias
+ * - Estados de pago pendientes
+ * - Notificaciones para instrucciones de pago
  */
 
 const Stripe = require('stripe');
 const { logger } = require('../utils/logger');
 
-class StripeService {
+class StripeServiceV2 {
   constructor(secretKey) {
     this.stripe = new Stripe(secretKey);
     this.priceCache = new Map();
@@ -27,20 +30,16 @@ class StripeService {
   }
 
   /**
-   * CORRECCIÓN PRINCIPAL: Validar que el price_id existe antes de usarlo
-   * Esta función previene el error "No such price"
+   * Validar price_id
    */
   async validatePriceId(priceId) {
     try {
-      // Verificar caché primero
       if (this.priceCache.has(priceId)) {
         return this.priceCache.get(priceId);
       }
 
-      // Obtener información del precio desde Stripe
       const price = await this.stripe.prices.retrieve(priceId);
       
-      // Guardar en caché
       this.priceCache.set(priceId, {
         id: price.id,
         active: price.active,
@@ -54,7 +53,6 @@ class StripeService {
         priceId,
         active: price.active,
         amount: price.unit_amount,
-        currency: price.currency,
       });
 
       return this.priceCache.get(priceId);
@@ -62,14 +60,11 @@ class StripeService {
       logger.error('Invalid price ID', {
         priceId,
         error: error.message,
-        errorType: error.type,
-        errorCode: error.code,
       });
 
-      // Retornar error específico
       throw {
         code: 'INVALID_PRICE_ID',
-        message: `El ID de precio '${priceId}' no existe en Stripe. Verifica la configuración.`,
+        message: `El ID de precio '${priceId}' no existe en Stripe.`,
         originalError: error.message,
         priceId,
       };
@@ -77,8 +72,341 @@ class StripeService {
   }
 
   /**
-   * Obtener todos los precios activos de Stripe
-   * Útil para debugging y configuración inicial
+   * Crear sesión de checkout con soporte para múltiples métodos de pago
+   * Incluye OXXO y transferencias bancarias
+   */
+  async createCheckoutSession(data) {
+    const {
+      priceId,
+      successUrl,
+      cancelUrl,
+      customerEmail,
+      metadata = {},
+      mode = 'payment',
+      paymentMethodTypes = ['card', 'oxxo', 'customer_balance'], // Métodos soportados
+    } = data;
+
+    try {
+      // Validar price_id
+      const priceInfo = await this.validatePriceId(priceId);
+
+      if (!priceInfo.active) {
+        throw {
+          code: 'INACTIVE_PRICE',
+          message: 'El precio configurado no está activo',
+          priceId,
+        };
+      }
+
+      // Configuración de la sesión
+      const sessionConfig = {
+        mode,
+        payment_method_types: paymentMethodTypes,
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        customer_email: customerEmail,
+        metadata: {
+          ...metadata,
+          priceId,
+          createdAt: new Date().toISOString(),
+        },
+        // Configuración para OXXO
+        payment_method_options: {
+          oxxo: {
+            expires_after_days: 3, // Voucher expira en 3 días
+          },
+        },
+        // Importante: Configurar idioma para OXXO
+        locale: 'es',
+      };
+
+      // Para transferencias bancarias, agregar configuración adicional
+      if (paymentMethodTypes.includes('customer_balance')) {
+        sessionConfig.payment_method_options.customer_balance = {
+          funding_type: 'bank_transfer',
+          bank_transfer: {
+            type: 'mx_bank_transfer', // Para México
+          },
+        };
+      }
+
+      const session = await this.stripe.checkout.sessions.create(sessionConfig);
+
+      logger.info('Checkout session created', {
+        sessionId: session.id,
+        priceId,
+        customerEmail,
+        paymentMethodTypes,
+        amount: priceInfo.amount,
+      });
+
+      return {
+        sessionId: session.id,
+        url: session.url,
+        priceInfo,
+        paymentMethodTypes,
+      };
+    } catch (error) {
+      logger.error('Error creating checkout session', {
+        error: error.message || error,
+        priceId,
+        customerEmail,
+      });
+
+      throw {
+        code: error.code || 'CHECKOUT_ERROR',
+        message: error.message || 'Error al crear la sesión de pago',
+        details: error,
+      };
+    }
+  }
+
+  /**
+   * Procesar webhook de Stripe
+   * CRÍTICO: Maneja eventos de pago diferido
+   */
+  async handleWebhook(rawBody, signature, webhookSecret) {
+    try {
+      const event = this.stripe.webhooks.constructEvent(
+        rawBody,
+        signature,
+        webhookSecret
+      );
+
+      logger.info('Webhook received', {
+        type: event.type,
+        eventId: event.id,
+      });
+
+      switch (event.type) {
+        // Checkout completado (usuario terminó el flujo)
+        case 'checkout.session.completed':
+          return await this.handleCheckoutComplete(event.data.object);
+
+        // IMPORTANTE: Pago confirmado (para OXXO y transferencias)
+        case 'payment_intent.succeeded':
+          return await this.handlePaymentSuccess(event.data.object);
+
+        // Pago fallido
+        case 'payment_intent.payment_failed':
+          return await this.handlePaymentFailed(event.data.object);
+
+        // OXXO: Voucher generado
+        case 'payment_intent.created':
+          return await this.handlePaymentIntentCreated(event.data.object);
+
+        // Estados intermedios importantes
+        case 'payment_intent.processing':
+          return await this.handlePaymentProcessing(event.data.object);
+
+        case 'payment_intent.canceled':
+          return await this.handlePaymentCanceled(event.data.object);
+
+        default:
+          logger.info('Unhandled webhook event', { type: event.type });
+          return { received: true, handled: false };
+      }
+    } catch (error) {
+      logger.error('Webhook error', {
+        error: error.message,
+        stack: error.stack,
+      });
+
+      throw {
+        code: 'WEBHOOK_ERROR',
+        message: 'Error procesando webhook de Stripe',
+        originalError: error.message,
+      };
+    }
+  }
+
+  /**
+   * Manejar checkout completado
+   * IMPORTANTE: No significa que el pago esté confirmado
+   */
+  async handleCheckoutComplete(session) {
+    try {
+      logger.info('Checkout completed', {
+        sessionId: session.id,
+        customerEmail: session.customer_email,
+        paymentStatus: session.payment_status,
+        paymentMethod: session.payment_method_types,
+      });
+
+      // CRÍTICO: Verificar estado del pago
+      const isPaid = session.payment_status === 'paid';
+      const isPending = session.payment_status === 'unpaid';
+
+      return {
+        type: 'checkout.completed',
+        sessionId: session.id,
+        customerEmail: session.customer_email,
+        amount: session.amount_total,
+        currency: session.currency,
+        metadata: session.metadata,
+        paymentStatus: session.payment_status,
+        isPaid, // true solo si el pago fue instantáneo (tarjeta)
+        isPending, // true para OXXO y transferencias
+        paymentMethodTypes: session.payment_method_types,
+      };
+    } catch (error) {
+      logger.error('Error handling checkout complete', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Manejar Payment Intent creado
+   * Se dispara cuando se genera un voucher de OXXO o instrucciones de transferencia
+   */
+  async handlePaymentIntentCreated(paymentIntent) {
+    logger.info('Payment Intent created', {
+      paymentIntentId: paymentIntent.id,
+      amount: paymentIntent.amount,
+      status: paymentIntent.status,
+      paymentMethod: paymentIntent.payment_method_types,
+    });
+
+    // Verificar si es OXXO
+    const isOxxo = paymentIntent.payment_method_types?.includes('oxxo');
+    const isTransfer = paymentIntent.payment_method_types?.includes('customer_balance');
+
+    return {
+      type: 'payment_intent.created',
+      paymentIntentId: paymentIntent.id,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
+      status: paymentIntent.status,
+      isOxxo,
+      isTransfer,
+      // Si es OXXO, aquí estarán las instrucciones
+      nextAction: paymentIntent.next_action,
+    };
+  }
+
+  /**
+   * Manejar pago en proceso
+   * Se dispara cuando el usuario pagó en OXXO o hizo la transferencia
+   * pero aún está en validación
+   */
+  async handlePaymentProcessing(paymentIntent) {
+    logger.info('Payment processing', {
+      paymentIntentId: paymentIntent.id,
+      amount: paymentIntent.amount,
+      status: paymentIntent.status,
+    });
+
+    return {
+      type: 'payment.processing',
+      paymentIntentId: paymentIntent.id,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
+      status: 'processing',
+      message: 'Pago en proceso de validación',
+    };
+  }
+
+  /**
+   * CRÍTICO: Manejar pago exitoso
+   * SOLO aquí se debe completar el pedido para OXXO y transferencias
+   */
+  async handlePaymentSuccess(paymentIntent) {
+    logger.info('Payment succeeded', {
+      paymentIntentId: paymentIntent.id,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
+      paymentMethod: paymentIntent.payment_method_types,
+    });
+
+    return {
+      type: 'payment.succeeded',
+      paymentIntentId: paymentIntent.id,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
+      status: 'succeeded',
+      // ESTE es el momento de completar el pedido
+      shouldCompleteOrder: true,
+    };
+  }
+
+  /**
+   * Manejar pago fallido
+   */
+  async handlePaymentFailed(paymentIntent) {
+    logger.error('Payment failed', {
+      paymentIntentId: paymentIntent.id,
+      lastError: paymentIntent.last_payment_error,
+    });
+
+    return {
+      type: 'payment.failed',
+      paymentIntentId: paymentIntent.id,
+      error: paymentIntent.last_payment_error,
+      status: 'failed',
+    };
+  }
+
+  /**
+   * Manejar pago cancelado
+   */
+  async handlePaymentCanceled(paymentIntent) {
+    logger.warn('Payment canceled', {
+      paymentIntentId: paymentIntent.id,
+      cancellationReason: paymentIntent.cancellation_reason,
+    });
+
+    return {
+      type: 'payment.canceled',
+      paymentIntentId: paymentIntent.id,
+      status: 'canceled',
+    };
+  }
+
+  /**
+   * Obtener detalles de un Payment Intent
+   * Útil para verificar estado de pagos de OXXO
+   */
+  async getPaymentIntent(paymentIntentId) {
+    try {
+      const paymentIntent = await this.stripe.paymentIntents.retrieve(
+        paymentIntentId,
+        {
+          expand: ['payment_method'],
+        }
+      );
+
+      logger.info('Payment Intent retrieved', {
+        paymentIntentId,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount,
+      });
+
+      return {
+        id: paymentIntent.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        status: paymentIntent.status,
+        paymentMethod: paymentIntent.payment_method,
+        nextAction: paymentIntent.next_action,
+        created: paymentIntent.created,
+      };
+    } catch (error) {
+      logger.error('Error retrieving payment intent', {
+        paymentIntentId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener todos los precios activos
    */
   async getAllActivePrices() {
     try {
@@ -107,272 +435,7 @@ class StripeService {
   }
 
   /**
-   * Crear sesión de checkout con validación robusta
-   */
-  async createCheckoutSession(data) {
-    const {
-      priceId,
-      successUrl,
-      cancelUrl,
-      customerEmail,
-      metadata = {},
-      mode = 'payment',
-    } = data;
-
-    try {
-      // PASO 1: Validar price_id ANTES de crear la sesión
-      const priceInfo = await this.validatePriceId(priceId);
-
-      if (!priceInfo.active) {
-        throw {
-          code: 'INACTIVE_PRICE',
-          message: 'El precio configurado no está activo en Stripe',
-          priceId,
-        };
-      }
-
-      // PASO 2: Crear sesión de checkout
-      const session = await this.stripe.checkout.sessions.create({
-        mode,
-        payment_method_types: ['card'],
-        line_items: [
-          {
-            price: priceId,
-            quantity: 1,
-          },
-        ],
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        customer_email: customerEmail,
-        metadata: {
-          ...metadata,
-          priceId,
-          createdAt: new Date().toISOString(),
-        },
-        // Importante: para suscripciones
-        ...(mode === 'subscription' && {
-          subscription_data: {
-            metadata,
-          },
-        }),
-      });
-
-      logger.info('Checkout session created', {
-        sessionId: session.id,
-        priceId,
-        customerEmail,
-        amount: priceInfo.amount,
-        currency: priceInfo.currency,
-      });
-
-      return {
-        sessionId: session.id,
-        url: session.url,
-        priceInfo,
-      };
-    } catch (error) {
-      logger.error('Error creating checkout session', {
-        error: error.message || error,
-        priceId,
-        customerEmail,
-        stack: error.stack,
-      });
-
-      // Retornar error amigable al usuario
-      throw {
-        code: error.code || 'CHECKOUT_ERROR',
-        message: error.message || 'Error al crear la sesión de pago',
-        details: error,
-      };
-    }
-  }
-
-  /**
-   * Procesar webhook de Stripe
-   */
-  async handleWebhook(rawBody, signature, webhookSecret) {
-    try {
-      // Verificar firma del webhook
-      const event = this.stripe.webhooks.constructEvent(
-        rawBody,
-        signature,
-        webhookSecret
-      );
-
-      logger.info('Webhook received', {
-        type: event.type,
-        eventId: event.id,
-      });
-
-      // Procesar según tipo de evento
-      switch (event.type) {
-        case 'checkout.session.completed':
-          return await this.handleCheckoutComplete(event.data.object);
-
-        case 'payment_intent.succeeded':
-          return await this.handlePaymentSuccess(event.data.object);
-
-        case 'payment_intent.payment_failed':
-          return await this.handlePaymentFailed(event.data.object);
-
-        case 'customer.subscription.created':
-          return await this.handleSubscriptionCreated(event.data.object);
-
-        case 'customer.subscription.deleted':
-          return await this.handleSubscriptionCancelled(event.data.object);
-
-        default:
-          logger.info('Unhandled webhook event', { type: event.type });
-          return { received: true, handled: false };
-      }
-    } catch (error) {
-      logger.error('Webhook error', {
-        error: error.message,
-        stack: error.stack,
-      });
-
-      throw {
-        code: 'WEBHOOK_ERROR',
-        message: 'Error procesando webhook de Stripe',
-        originalError: error.message,
-      };
-    }
-  }
-
-  /**
-   * Manejar checkout completado
-   */
-  async handleCheckoutComplete(session) {
-    try {
-      logger.info('Checkout completed', {
-        sessionId: session.id,
-        customerEmail: session.customer_email,
-        amountTotal: session.amount_total,
-        currency: session.currency,
-      });
-
-      return {
-        type: 'checkout.completed',
-        sessionId: session.id,
-        customerEmail: session.customer_email,
-        amount: session.amount_total,
-        currency: session.currency,
-        metadata: session.metadata,
-      };
-    } catch (error) {
-      logger.error('Error handling checkout complete', { error: error.message });
-      throw error;
-    }
-  }
-
-  /**
-   * Manejar pago exitoso
-   */
-  async handlePaymentSuccess(paymentIntent) {
-    logger.info('Payment succeeded', {
-      paymentIntentId: paymentIntent.id,
-      amount: paymentIntent.amount,
-      currency: paymentIntent.currency,
-    });
-
-    return {
-      type: 'payment.succeeded',
-      paymentIntentId: paymentIntent.id,
-      amount: paymentIntent.amount,
-      currency: paymentIntent.currency,
-    };
-  }
-
-  /**
-   * Manejar pago fallido
-   */
-  async handlePaymentFailed(paymentIntent) {
-    logger.error('Payment failed', {
-      paymentIntentId: paymentIntent.id,
-      lastError: paymentIntent.last_payment_error,
-    });
-
-    return {
-      type: 'payment.failed',
-      paymentIntentId: paymentIntent.id,
-      error: paymentIntent.last_payment_error,
-    };
-  }
-
-  /**
-   * Manejar suscripción creada
-   */
-  async handleSubscriptionCreated(subscription) {
-    logger.info('Subscription created', {
-      subscriptionId: subscription.id,
-      customerId: subscription.customer,
-      status: subscription.status,
-    });
-
-    return {
-      type: 'subscription.created',
-      subscriptionId: subscription.id,
-      customerId: subscription.customer,
-      status: subscription.status,
-    };
-  }
-
-  /**
-   * Manejar suscripción cancelada
-   */
-  async handleSubscriptionCancelled(subscription) {
-    logger.warn('Subscription cancelled', {
-      subscriptionId: subscription.id,
-      customerId: subscription.customer,
-    });
-
-    return {
-      type: 'subscription.cancelled',
-      subscriptionId: subscription.id,
-      customerId: subscription.customer,
-    };
-  }
-
-  /**
-   * Crear Payment Intent directo (sin checkout)
-   */
-  async createPaymentIntent(data) {
-    const { amount, currency, customerEmail, metadata = {} } = data;
-
-    try {
-      const paymentIntent = await this.stripe.paymentIntents.create({
-        amount,
-        currency,
-        receipt_email: customerEmail,
-        metadata: {
-          ...metadata,
-          customerEmail,
-        },
-      });
-
-      logger.info('Payment Intent created', {
-        paymentIntentId: paymentIntent.id,
-        amount,
-        currency,
-        customerEmail,
-      });
-
-      return {
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-      };
-    } catch (error) {
-      logger.error('Error creating payment intent', {
-        error: error.message,
-        amount,
-        currency,
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Limpiar caché (útil para actualizaciones)
+   * Limpiar caché
    */
   clearCache() {
     this.priceCache.clear();
@@ -381,4 +444,4 @@ class StripeService {
   }
 }
 
-module.exports = StripeService;
+module.exports = StripeServiceV2;
