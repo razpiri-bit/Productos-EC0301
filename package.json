@@ -1,44 +1,32 @@
 {
   "name": "skillscert-payment-system",
   "version": "1.0.0",
-  "description": "Sistema de pagos integrado con Stripe, notificaciones por email (Postmark) y WhatsApp para SkillsCert",
-  "main": "app.js",
+  "description": "Payment system for SkillsCert EC0301",
+  "main": "src/app.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
-    "test": "jest",
-    "lint": "eslint .",
-    "logs:view": "tail -f logs/combined.log",
-    "logs:errors": "tail -f logs/error.log",
-    "logs:payments": "tail -f logs/payments.log"
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
+    "payment",
     "stripe",
-    "payments",
-    "postmark",
-    "whatsapp",
-    "nodejs",
-    "express",
-    "skillscert"
+    "skillscert",
+    "ec0301"
   ],
-  "author": "Roberto Azpiri García",
+  "author": "",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "helmet": "^7.1.0",
-    "mongodb": "^6.3.0",
-    "morgan": "^1.10.0",
-    "postmark": "^4.0.2",
-    "stripe": "^14.9.0",
-    "winston": "^3.11.0"
+    "stripe": "^12.0.0",
+    "dotenv": "^16.0.3",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "body-parser": "^1.20.2",
+    "morgan": "^1.10.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "eslint": "^8.56.0",
-    "jest": "^29.7.0"
+    "nodemon": "^3.0.1"
   },
   "engines": {
     "node": ">=18.0.0",
